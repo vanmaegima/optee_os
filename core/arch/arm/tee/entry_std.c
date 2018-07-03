@@ -1,31 +1,7 @@
 // SPDX-License-Identifier: BSD-2-Clause
 /*
  * Copyright (c) 2015-2016, Linaro Limited
- * All rights reserved.
  * Copyright (c) 2014, STMicroelectronics International N.V.
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *
- * 1. Redistributions of source code must retain the above copyright notice,
- * this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright notice,
- * this list of conditions and the following disclaimer in the documentation
- * and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
  */
 
 #include <assert.h>
@@ -58,6 +34,8 @@ static struct mobj *shm_mobj;
 #ifdef CFG_SECURE_DATA_PATH
 static struct mobj **sdp_mem_mobjs;
 #endif
+
+static unsigned int session_pnum;
 
 static bool param_mem_from_mobj(struct param_mem *mem, struct mobj *mobj,
 				const paddr_t pa, const size_t sz)
@@ -97,7 +75,7 @@ static TEE_Result assign_mobj_to_param_mem(const paddr_t pa, const size_t sz,
 							  false);
 		if (!mem->mobj)
 			return TEE_ERROR_BAD_PARAMETERS;
-		mem->offs = pa & SMALL_PAGE_MASK;
+		mem->offs = 0;
 		mem->size = sz;
 		return TEE_SUCCESS;
 	}
@@ -319,7 +297,8 @@ static void entry_open_session(struct thread_smc_args *smc_args,
 	 * un-predictable, using this property to increase randomness
 	 * of prng
 	 */
-	plat_prng_add_jitter_entropy();
+	plat_prng_add_jitter_entropy(CRYPTO_RNG_SRC_JITTER_SESSION,
+				     &session_pnum);
 
 cleanup_params:
 	cleanup_params(arg->params + num_meta, saved_attr,
@@ -346,7 +325,8 @@ static void entry_close_session(struct thread_smc_args *smc_args,
 		goto out;
 	}
 
-	plat_prng_add_jitter_entropy();
+	plat_prng_add_jitter_entropy(CRYPTO_RNG_SRC_JITTER_SESSION,
+				     &session_pnum);
 
 	s = (struct tee_ta_session *)(vaddr_t)arg->session;
 	res = tee_ta_close_session(s, &tee_open_sessions, NSAPP_IDENTITY);

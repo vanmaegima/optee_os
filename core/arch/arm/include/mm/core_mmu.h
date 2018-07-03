@@ -2,29 +2,6 @@
 /*
  * Copyright (c) 2016, Linaro Limited
  * Copyright (c) 2014, STMicroelectronics International N.V.
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *
- * 1. Redistributions of source code must retain the above copyright notice,
- * this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright notice,
- * this list of conditions and the following disclaimer in the documentation
- * and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
  */
 #ifndef CORE_MMU_H
 #define CORE_MMU_H
@@ -74,10 +51,6 @@
 #define CORE_MMU_USER_PARAM_SIZE	(1 << CORE_MMU_USER_PARAM_SHIFT)
 #define CORE_MMU_USER_PARAM_MASK	(CORE_MMU_USER_PARAM_SIZE - 1)
 
-#ifndef TEE_RAM_VA_SIZE
-#define TEE_RAM_VA_SIZE			CORE_MMU_PGDIR_SIZE
-#endif
-
 /*
  * CORE_MMU_L1_TBL_OFFSET is used when switching to/from reduced kernel
  * mapping. The actual value depends on internals in core_mmu_lpae.c and
@@ -96,7 +69,16 @@
 
 /*
  * Identify mapping constraint: virtual base address is the physical start addr.
+ * If platform did not set some macros, some get default value.
  */
+#ifndef TEE_RAM_VA_SIZE
+#define TEE_RAM_VA_SIZE			CORE_MMU_PGDIR_SIZE
+#endif
+
+#ifndef TEE_LOAD_ADDR
+#define TEE_LOAD_ADDR			TEE_RAM_START
+#endif
+
 #define TEE_RAM_VA_START		TEE_RAM_START
 #define TEE_TEXT_VA_START		(TEE_RAM_VA_START + \
 					 (TEE_LOAD_ADDR - TEE_RAM_START))

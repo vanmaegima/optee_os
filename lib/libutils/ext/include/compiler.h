@@ -1,29 +1,6 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 /*
  * Copyright (c) 2014, STMicroelectronics International N.V.
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *
- * 1. Redistributions of source code must retain the above copyright notice,
- * this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright notice,
- * this list of conditions and the following disclaimer in the documentation
- * and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
  */
 
 #ifndef COMPILER_H
@@ -93,13 +70,6 @@
 /*
  * Copied/inspired from https://www.fefe.de/intof.html
  */
-#define __INTOF_HALF_MAX_SIGNED(type) ((type)1 << (sizeof(type)*8-2))
-#define __INTOF_MAX_SIGNED(type) (__INTOF_HALF_MAX_SIGNED(type) - 1 + \
-			    __INTOF_HALF_MAX_SIGNED(type))
-#define __INTOF_MIN_SIGNED(type) (-1 - __INTOF_MAX_SIGNED(type))
-
-#define __INTOF_MIN(type) ((type)-1 < 1?__INTOF_MIN_SIGNED(type):(type)0)
-#define __INTOF_MAX(type) ((type)~__INTOF_MIN(type))
 
 #define __INTOF_ASSIGN(dest, src) (__extension__({ \
 	typeof(src) __intof_x = (src); \
@@ -112,23 +82,73 @@
 #define __INTOF_ADD(c, a, b) (__extension__({ \
 	typeof(a) __intofa_a = (a); \
 	typeof(b) __intofa_b = (b); \
+	intmax_t __intofa_a_signed = __intofa_a; \
+	uintmax_t __intofa_a_unsigned = __intofa_a; \
+	intmax_t __intofa_b_signed = __intofa_b; \
+	uintmax_t __intofa_b_unsigned = __intofa_b; \
 	\
 	__intofa_b < 1 ? \
-		((__INTOF_MIN(typeof(c)) - __intofa_b <= __intofa_a) ? \
-			__INTOF_ASSIGN((c), __intofa_a + __intofa_b) : 1) : \
-		((__INTOF_MAX(typeof(c)) - __intofa_b >= __intofa_a) ? \
-			__INTOF_ASSIGN((c), __intofa_a + __intofa_b) : 1); \
+		__intofa_a < 1 ? \
+			((INTMAX_MIN - __intofa_b_signed <= \
+			  __intofa_a_signed)) ? \
+				__INTOF_ASSIGN((c), __intofa_a_signed + \
+						    __intofa_b_signed) : 1 \
+		: \
+			((__intofa_a_unsigned >= (uintmax_t)-__intofa_b) ? \
+				__INTOF_ASSIGN((c), __intofa_a_unsigned + \
+						    __intofa_b_signed) \
+			: \
+				__INTOF_ASSIGN((c), \
+					(intmax_t)(__intofa_a_unsigned + \
+						   __intofa_b_signed))) \
+	: \
+		__intofa_a < 1 ? \
+			((__intofa_b_unsigned >= (uintmax_t)-__intofa_a) ? \
+				__INTOF_ASSIGN((c), __intofa_a_signed + \
+						    __intofa_b_unsigned) \
+			: \
+				__INTOF_ASSIGN((c), \
+					(intmax_t)(__intofa_a_signed + \
+						   __intofa_b_unsigned))) \
+		: \
+			((UINTMAX_MAX - __intofa_b_unsigned >= \
+			  __intofa_a_unsigned) ? \
+				__INTOF_ASSIGN((c), __intofa_a_unsigned + \
+						    __intofa_b_unsigned) : 1); \
 }))
 
 #define __INTOF_SUB(c, a, b) (__extension__({ \
 	typeof(a) __intofs_a = a; \
 	typeof(b) __intofs_b = b; \
+	intmax_t __intofs_a_signed = __intofs_a; \
+	uintmax_t __intofs_a_unsigned = __intofs_a; \
+	intmax_t __intofs_b_signed = __intofs_b; \
+	uintmax_t __intofs_b_unsigned = __intofs_b; \
 	\
 	__intofs_b < 1 ? \
-		((__INTOF_MAX(typeof(c)) + __intofs_b >= __intofs_a) ? \
-			__INTOF_ASSIGN((c), __intofs_a - __intofs_b) : 1) : \
-		((__INTOF_MIN(typeof(c)) + __intofs_b <= __intofs_a) ? \
-			__INTOF_ASSIGN((c), __intofs_a - __intofs_b) : 1); \
+		__intofs_a < 1 ? \
+			((INTMAX_MAX + __intofs_b >= __intofs_a) ? \
+				__INTOF_ASSIGN((c), __intofs_a_signed - \
+						    __intofs_b_signed) : 1) \
+		: \
+			(((uintmax_t)(UINTMAX_MAX + __intofs_b_signed) >= \
+			  __intofs_a_unsigned) ? \
+				__INTOF_ASSIGN((c), __intofs_a - \
+						    __intofs_b) : 1) \
+	: \
+		__intofs_a < 1 ? \
+			(((INTMAX_MIN + __intofs_b <= __intofs_a)) ? \
+				__INTOF_ASSIGN((c), \
+					(intmax_t)(__intofs_a_signed - \
+						   __intofs_b_unsigned)) : 1) \
+		: \
+			((__intofs_b_unsigned <= __intofs_a_unsigned) ? \
+				__INTOF_ASSIGN((c), __intofs_a_unsigned - \
+						    __intofs_b_unsigned) \
+			: \
+				__INTOF_ASSIGN((c), \
+					(intmax_t)(__intofs_a_unsigned - \
+						   __intofs_b_unsigned))); \
 }))
 
 /*

@@ -1,29 +1,6 @@
 // SPDX-License-Identifier: BSD-2-Clause
 /*
  * Copyright (c) 2014, STMicroelectronics International N.V.
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *
- * 1. Redistributions of source code must retain the above copyright notice,
- * this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright notice,
- * this list of conditions and the following disclaimer in the documentation
- * and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
  */
 
 #define PROTOTYPES
@@ -312,7 +289,7 @@ static void *raw_malloc(size_t hdr_size, size_t ftr_size, size_t pl_size,
 			struct bpoolset *poolset)
 {
 	void *ptr = NULL;
-	size_t s = hdr_size + ftr_size + pl_size;
+	bufsize s;
 
 	/*
 	 * Make sure that malloc has correct alignment of returned buffers.
@@ -323,8 +300,10 @@ static void *raw_malloc(size_t hdr_size, size_t ftr_size, size_t pl_size,
 
 	raw_malloc_validate_pools();
 
-	/* Check wrapping */
-	if (s < pl_size)
+	/* Compute total size */
+	if (ADD_OVERFLOW(pl_size, hdr_size, &s))
+		goto out;
+	if (ADD_OVERFLOW(s, ftr_size, &s))
 		goto out;
 
 	/* BGET doesn't like 0 sized allocations */
@@ -349,13 +328,17 @@ static void raw_free(void *ptr, struct bpoolset *poolset)
 static void *raw_calloc(size_t hdr_size, size_t ftr_size, size_t pl_nmemb,
 			size_t pl_size, struct bpoolset *poolset)
 {
-	size_t s = hdr_size + ftr_size + pl_nmemb * pl_size;
 	void *ptr = NULL;
+	bufsize s;
 
 	raw_malloc_validate_pools();
 
-	/* Check wrapping */
-	if (s < pl_nmemb || s < pl_size)
+	/* Compute total size */
+	if (MUL_OVERFLOW(pl_nmemb, pl_size, &s))
+		goto out;
+	if (ADD_OVERFLOW(s, hdr_size, &s))
+		goto out;
+	if (ADD_OVERFLOW(s, ftr_size, &s))
 		goto out;
 
 	/* BGET doesn't like 0 sized allocations */
@@ -372,11 +355,13 @@ out:
 static void *raw_realloc(void *ptr, size_t hdr_size, size_t ftr_size,
 			 size_t pl_size, struct bpoolset *poolset)
 {
-	size_t s = hdr_size + ftr_size + pl_size;
 	void *p = NULL;
+	bufsize s;
 
-	/* Check wrapping */
-	if (s < pl_size)
+	/* Compute total size */
+	if (ADD_OVERFLOW(pl_size, hdr_size, &s))
+		goto out;
+	if (ADD_OVERFLOW(s, ftr_size, &s))
 		goto out;
 
 	raw_malloc_validate_pools();

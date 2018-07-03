@@ -41,6 +41,11 @@ R:	Linaro <op-tee@linaro.org>
 S:	Maintained
 F:	core/arch/arm/plat-vexpress/
 
+AllWinner sun8i H2+
+R:	Ying-Chun Liu (PaulLiu) <paul.liu@linaro.org> [@grandpaul]
+S:	Maintained
+F:	core/arch/arm/plat-sunxi/
+
 Atmel ATSAMA5D2-XULT
 R:	Akshay Bhat <akshay.bhat@timesys.com> [@nodeax]
 S:	Maintained
@@ -117,6 +122,11 @@ R:	Rockchip <op-tee@rock-chips.com>
 S:	Maintained
 F:	core/arch/arm/plat-rockchip/
 
+Socionext DeveloperBox (Synquacer SC2A11)
+R:	Linaro <op-tee@linaro.org>
+S:	Maintained
+F:	core/arch/arm/plat-synquacer/
+
 Spreadtrum SC9860
 R:	Aijun Sun <aijun.sun@spreadtrum.com>
 S:	Maintained
@@ -127,10 +137,16 @@ R:	Linaro <op-tee@linaro.org>
 S:	Maintained
 F:	core/arch/arm/plat-stm/
 
-Texas Instruments AM43xx, AM57xx, DRA7xx
+STMicroelectronics stm32mp1
+R:	Etienne Carriere <etienne.carriere@st.com>
+S:	Maintained
+F:	core/arch/arm/plat-stm32mp1/
+
+Texas Instruments AM43xx, AM57xx, DRA7xx, AM65x
 R:	Andrew F. Davis <afd@ti.com>
 S:	Maintained
 F:	core/arch/arm/plat-ti/
+F:	core/arch/arm/plat-k3/
 
 Xilinx Zynq 7000 ZC702 Board
 R:	Yan Yan <yan.yan@windriver.com>

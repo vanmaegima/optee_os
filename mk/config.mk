@@ -110,7 +110,7 @@ endif
 # with limited depth not including any tag, so there is really no guarantee
 # that TEE_IMPL_VERSION contains the major and minor revision numbers.
 CFG_OPTEE_REVISION_MAJOR ?= 3
-CFG_OPTEE_REVISION_MINOR ?= 1
+CFG_OPTEE_REVISION_MINOR ?= 2
 
 # Trusted OS implementation manufacturer name
 CFG_TEE_MANUFACTURER ?= LINARO
@@ -211,6 +211,9 @@ ifeq ($(CFG_EARLY_TA),y)
 $(call force,CFG_ZLIB,y)
 endif
 
+# Support for dynamically linked user TAs
+CFG_TA_DYNLINK ?= y
+
 # Enable paging, requires SRAM, can't be enabled by default
 CFG_WITH_PAGER ?= n
 
@@ -283,6 +286,10 @@ $(eval $(call cfg-depends-all,CFG_SECSTOR_TA,CFG_REE_FS CFG_WITH_USER_TA))
 CFG_SECSTOR_TA_MGMT_PTA ?= $(call cfg-all-enabled,CFG_SECSTOR_TA)
 $(eval $(call cfg-depends-all,CFG_SECSTOR_TA_MGMT_PTA,CFG_SECSTOR_TA))
 
+# Enable the pseudo TA for misc. auxilary services, extending existing
+# GlobalPlatform Core API (for example, re-seeding RNG entropy pool etc.)
+CFG_SYSTEM_PTA ?= y
+
 # Define the number of cores per cluster used in calculating core position.
 # The cluster number is shifted by this value and added to the core ID,
 # so its value represents log2(cores/cluster).
@@ -312,3 +319,10 @@ CFG_TA_BIGNUM_MAX_BITS ?= 2048
 # implemented by the TEE core.
 # Set this to a lower value to reduce the memory footprint.
 CFG_CORE_BIGNUM_MAX_BITS ?= 4096
+
+# Compiles mbedTLS for TA usage
+CFG_TA_MBEDTLS ?= y
+
+# Compile the TA library mbedTLS with self test functions, the functions
+# need to be called to test anything
+CFG_TA_MBEDTLS_SELF_TEST ?= y
