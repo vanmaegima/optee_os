@@ -32,9 +32,6 @@ endif
 # Supported values: undefined, 1, 2 and 3. 3 gives more warnings.
 WARNS ?= 3
 
-# Define NOWERROR=1 so that warnings are not treated as errors
-# NOWERROR=1
-
 # Define DEBUG=1 to compile without optimization (forces -O0)
 # DEBUG=1
 
@@ -73,8 +70,8 @@ CFG_TEE_CORE_MALLOC_DEBUG ?= n
 CFG_TEE_TA_MALLOC_DEBUG ?= n
 
 # Mask to select which messages are prefixed with long debugging information
-# (severity, thread ID, component name, function name, line number) based on
-# the message level. If BIT(level) is set, the long prefix is shown.
+# (severity, core ID, thread ID, component name, function name, line number)
+# based on the message level. If BIT(level) is set, the long prefix is shown.
 # Otherwise a short prefix is used (severity and component name only).
 # Levels: 0=none 1=error 2=info 3=debug 4=flow
 CFG_MSG_LONG_PREFIX_MASK ?= 0x1a
@@ -110,7 +107,7 @@ endif
 # with limited depth not including any tag, so there is really no guarantee
 # that TEE_IMPL_VERSION contains the major and minor revision numbers.
 CFG_OPTEE_REVISION_MAJOR ?= 3
-CFG_OPTEE_REVISION_MINOR ?= 2
+CFG_OPTEE_REVISION_MINOR ?= 3
 
 # Trusted OS implementation manufacturer name
 CFG_TEE_MANUFACTURER ?= LINARO
@@ -202,7 +199,12 @@ CFG_REE_FS_TA ?= y
 #                                    # later library recompilations.
 #   <build some TAs>
 #   $ make EARLY_TA_PATHS=<paths>    # Build OP-TEE and embbed the TA(s)
-ifneq ($(EARLY_TA_PATHS),)
+#
+# Another option is CFG_IN_TREE_EARLY_TAS which is used to point at
+# in-tree TAs. CFG_IN_TREE_EARLY_TAS is formatted as:
+# <name-of-ta>/<uuid>
+# for instance avb/023f8f1a-292a-432b-8fc4-de8471358067
+ifneq ($(EARLY_TA_PATHS)$(CFG_IN_TREE_EARLY_TAS),)
 $(call force,CFG_EARLY_TA,y)
 else
 CFG_EARLY_TA ?= n
@@ -216,6 +218,10 @@ CFG_TA_DYNLINK ?= y
 
 # Enable paging, requires SRAM, can't be enabled by default
 CFG_WITH_PAGER ?= n
+
+# BestFit algorithm in bget reduces the fragmentation of the heap when running
+# with the pager enabled.
+CFG_CORE_BGET_BESTFIT ?= $(CFG_WITH_PAGER)
 
 # Use the pager for user TAs
 CFG_PAGED_USER_TA ?= $(CFG_WITH_PAGER)

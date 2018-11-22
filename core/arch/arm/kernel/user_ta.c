@@ -843,8 +843,10 @@ static TEE_Result load_elf(const TEE_UUID *uuid, struct user_ta_ctx *utc)
 		res = load_elf_from_store(uuid, store, utc);
 		if (res == TEE_ERROR_ITEM_NOT_FOUND)
 			continue;
-		if (res)
+		if (res) {
 			DMSG("res=0x%x", res);
+			continue;
+		}
 		return res;
 	}
 	return TEE_ERROR_ITEM_NOT_FOUND;
@@ -909,6 +911,13 @@ static TEE_Result set_exidx(struct user_ta_ctx *utc)
 	TAILQ_FOREACH(elf, &utc->elfs, link)
 		exidx_sz += elf->exidx_size;
 
+	if (!exidx_sz) {
+		/* The empty table from first segment will fit */
+		utc->exidx_start = exe->exidx_start;
+		utc->exidx_size = exe->exidx_size;
+		return TEE_SUCCESS;
+	}
+
 	utc->mobj_exidx = alloc_ta_mem(exidx_sz);
 	if (!utc->mobj_exidx)
 		return TEE_ERROR_OUT_OF_MEMORY;
@@ -954,6 +963,7 @@ static TEE_Result set_exidx(struct user_ta_ctx *utc)
 	return TEE_SUCCESS;
 err:
 	mobj_free(utc->mobj_exidx);
+	utc->mobj_exidx = NULL;
 	return res;
 }
 

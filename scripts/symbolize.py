@@ -31,7 +31,12 @@ call stack can in principle be processed by this script. This currently
 includes aborts and panics from the TEE core as well as from any TA.
 The paths provided on the command line are used to locate the appropriate ELF
 binary (tee.elf or Trusted Application). The GNU binutils (addr2line, objdump,
-nm) are used to extract the debug info.
+nm) are used to extract the debug info. If the CROSS_COMPILE environment
+variable is set, it is used as a prefix to the binutils tools. That is, the
+script will invoke $(CROSS_COMPILE)addr2line etc. If it is not set however,
+the prefix will be determined automatically for each ELF file based on its
+architecture (arm-linux-gnueabihf-, aarch64-linux-gnu-). The resulting command
+is then expected to be found in the user's PATH.
 
 OP-TEE abort and panic messages are sent to the secure console. They look like
 the following:
@@ -60,14 +65,15 @@ def get_args():
                 description='Symbolizes OP-TEE abort dumps',
                 epilog=epilog)
     parser.add_argument('-d', '--dir', action='append', nargs='+',
-        help='Search for ELF file in DIR. tee.elf is needed to decode '
-             'a TEE Core or pseudo-TA abort, while <TA_uuid>.elf is required '
-             'if a user-mode TA has crashed. For convenience, ELF files '
-             'may also be given.')
+                        help='Search for ELF file in DIR. tee.elf is needed '
+                        'to decode a TEE Core or pseudo-TA abort, while '
+                        '<TA_uuid>.elf is required if a user-mode TA has '
+                        'crashed. For convenience, ELF files may also be '
+                        'given.')
     parser.add_argument('-s', '--strip_path', nargs='?',
-        help='Strip STRIP_PATH from file paths (default: current directory, '
-             'use -s with no argument to show full paths)',
-        default=os.getcwd())
+                        help='Strip STRIP_PATH from file paths (default: '
+                        'current directory, use -s with no argument to show '
+                        'full paths)', default=os.getcwd())
 
     return parser.parse_args()
 
@@ -80,6 +86,16 @@ class Symbolizer(object):
         self._addr2line = None
         self.reset()
 
+    def my_Popen(self, cmd):
+        try:
+            return subprocess.Popen(cmd, stdin=subprocess.PIPE,
+                                    stdout=subprocess.PIPE)
+        except OSError as e:
+            if e.errno == os.errno.ENOENT:
+                print >> sys.stderr, "*** Error:", cmd[0] + \
+                    ": command not found"
+                sys.exit(1)
+
     def get_elf(self, elf_or_uuid):
         if not elf_or_uuid.endswith('.elf'):
             elf_or_uuid += '.elf'
@@ -91,6 +107,9 @@ class Symbolizer(object):
                 return elf[0]
 
     def set_arch(self):
+        if self._arch:
+            return
+        self._arch = os.getenv('CROSS_COMPILE');
         if self._arch:
             return
         elf = self.get_elf(self._elfs[0][0])
@@ -125,9 +144,7 @@ class Symbolizer(object):
         cmd = self.arch_prefix('addr2line')
         if not cmd:
             return
-        self._addr2line = subprocess.Popen([cmd, '-f', '-p', '-e', elf],
-                                           stdin=subprocess.PIPE,
-                                           stdout=subprocess.PIPE)
+        self._addr2line = self.my_Popen([cmd, '-f', '-p', '-e', elf])
         self._addr2line_elf_name = elf_name
 
     # If addr falls into a region that maps a TA ELF file, return the load
@@ -192,18 +209,16 @@ class Symbolizer(object):
         if not reladdr or not elf or not cmd:
             return ''
         ireladdr = int(reladdr, 16)
-        nm = subprocess.Popen([cmd, '--numeric-sort', '--print-size', elf],
-                              stdin=subprocess.PIPE,
-                              stdout=subprocess.PIPE)
+        nm = self.my_Popen([cmd, '--numeric-sort', '--print-size', elf])
         for line in iter(nm.stdout.readline, ''):
             try:
                 addr, size, _, name = line.split()
-            except:
+            except ValueError:
                 # Size is missing
                 try:
                     addr, _, name = line.split()
                     size = '0'
-                except:
+                except ValueError:
                     # E.g., undefined (external) symbols (line = "U symbol")
                     continue
             iaddr = int(addr, 16)
@@ -235,13 +250,11 @@ class Symbolizer(object):
         if not reladdr or not elf or not cmd:
             return ''
         iaddr = int(reladdr, 16)
-        objdump = subprocess.Popen([cmd, '--section-headers', elf],
-                                   stdin=subprocess.PIPE,
-                                   stdout=subprocess.PIPE)
+        objdump = self.my_Popen([cmd, '--section-headers', elf])
         for line in iter(objdump.stdout.readline, ''):
             try:
                 idx, name, size, vma, lma, offs, algn = line.split()
-            except:
+            except ValueError:
                 continue
             ivma = int(vma, 16)
             isize = int(size, 16)
@@ -284,13 +297,11 @@ class Symbolizer(object):
         if not elf or not cmd:
             return
         self._sections[elf_name] = []
-        objdump = subprocess.Popen([cmd, '--section-headers', elf],
-                                   stdin=subprocess.PIPE,
-                                   stdout=subprocess.PIPE)
+        objdump = self.my_Popen([cmd, '--section-headers', elf])
         for line in iter(objdump.stdout.readline, ''):
             try:
                 _, name, size, vma, _, _, _ = line.split()
-            except:
+            except ValueError:
                 if 'ALLOC' in line:
                     self._sections[elf_name].append([name, int(vma, 16),
                                                      int(size, 16)])
@@ -333,12 +344,10 @@ class Symbolizer(object):
         self._regions = []   # [[addr, size, elf_idx, saved line], ...]
         self._elfs = {0: ["tee.elf", 0]}  # {idx: [uuid, load_addr], ...}
 
-
     def pretty_print_path(self, path):
         if self._strip_path:
             return re.sub(re.escape(self._strip_path) + '/*', '', path)
         return path
-
 
     def write(self, line):
             if self._call_stack_found:
@@ -431,6 +440,7 @@ def main():
     for line in sys.stdin:
         symbolizer.write(line)
     symbolizer.flush()
+
 
 if __name__ == "__main__":
     main()

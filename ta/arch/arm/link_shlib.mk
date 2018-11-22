@@ -3,7 +3,7 @@ $(error SHLIBUUID not set)
 endif
 link-out-dir = $(out-dir)
 
-SIGN = $(TA_DEV_KIT_DIR)/scripts/sign.py
+SIGN ?= $(TA_DEV_KIT_DIR)/scripts/sign.py
 TA_SIGN_KEY ?= $(TA_DEV_KIT_DIR)/keys/default_ta.pem
 
 all: $(link-out-dir)/$(shlibname).so $(link-out-dir)/$(shlibname).dmp \
@@ -42,6 +42,6 @@ $(link-out-dir)/$(shlibuuid).elf: $(link-out-dir)/$(shlibname).so
 
 $(link-out-dir)/$(shlibuuid).ta: $(link-out-dir)/$(shlibname).stripped.so \
 				$(TA_SIGN_KEY)
-	@echo '  SIGN    $@'
+	@$(cmd-echo-silent) '  SIGN    $@'
 	$(q)$(SIGN) --key $(TA_SIGN_KEY) --uuid $(shlibuuid) --version 0 \
 		--in $< --out $@
