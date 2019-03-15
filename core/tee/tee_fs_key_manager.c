@@ -148,7 +148,9 @@ static TEE_Result tee_fs_init_key_manager(void)
 	 *     message := concatenate(chip_id, static string)
 	 * */
 	tee_otp_get_hw_unique_key(&huk);
-	tee_otp_get_die_id(chip_id, sizeof(chip_id));
+	memset(chip_id, 0, sizeof(chip_id));
+	if (tee_otp_get_die_id(chip_id, sizeof(chip_id)))
+		return TEE_ERROR_BAD_STATE;
 
 	memcpy(message, chip_id, sizeof(chip_id));
 	memcpy(message + sizeof(chip_id), string_for_ssk_gen,
@@ -259,6 +261,8 @@ TEE_Result tee_fs_crypt_block(const TEE_UUID *uuid, uint8_t *out,
 
 	/* Compute initialization vector for this block */
 	res = essiv(iv, fek, blk_idx);
+	if (res != TEE_SUCCESS)
+		return res;
 
 	/* Run AES CBC */
 	res = crypto_cipher_alloc_ctx(&ctx, algo);

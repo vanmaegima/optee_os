@@ -113,7 +113,7 @@ endif
 # with limited depth not including any tag, so there is really no guarantee
 # that TEE_IMPL_VERSION contains the major and minor revision numbers.
 CFG_OPTEE_REVISION_MAJOR ?= 3
-CFG_OPTEE_REVISION_MINOR ?= 3
+CFG_OPTEE_REVISION_MINOR ?= 4
 
 # Trusted OS implementation manufacturer name
 CFG_TEE_MANUFACTURER ?= LINARO
@@ -184,10 +184,39 @@ endif
 # Enable support for dynamically loaded user TAs
 CFG_WITH_USER_TA ?= y
 
+# Choosing the architecture(s) of user-mode libraries (used by TAs)
+#
+# Platforms may define a list of supported architectures for user-mode code
+# by setting $(supported-ta-targets). Valid values are "ta_arm32", "ta_arm64",
+# "ta_arm32 ta_arm64" and "ta_arm64 ta_arm32".
+# $(supported-ta-targets) defaults to "ta_arm32" when the TEE core is 32-bits,
+# and "ta_arm32 ta_arm64" when it is 64-bits (that is, when CFG_ARM64_core=y).
+# The first entry in $(supported-ta-targets) has a special role, see
+# CFG_USER_TA_TARGET_<ta-name> below.
+#
+# CFG_USER_TA_TARGETS may be defined to restrict $(supported-ta-targets) or
+# change the order of the values.
+#
+# The list of TA architectures is ultimately stored in $(ta-targets).
+
+# CFG_USER_TA_TARGET_<ta-name> (for example, CFG_USER_TA_TARGET_avb), if
+# defined, selects the unique TA architecture mode for building the in-tree TA
+# <ta-name>. Can be either ta_arm32 or ta_arm64.
+# By default, in-tree TAs are built using the first architecture specified in
+# $(ta-targets).
+
 # Load user TAs from the REE filesystem via tee-supplicant
-# There is currently no other alternative, but you may want to disable this in
-# case you implement your own TA store
 CFG_REE_FS_TA ?= y
+
+# Pre-authentication of TA binaries loaded from the REE filesystem
+#
+# - If CFG_REE_FS_TA_BUFFERED=y: load TA binary into a temporary buffer in the
+#   "Secure DDR" pool, check the signature, then process the file only if it is
+#   valid.
+# - If disabled: hash the binaries as they are being processed and verify the
+#   signature as a last step.
+CFG_REE_FS_TA_BUFFERED ?= $(CFG_REE_FS_TA)
+$(eval $(call cfg-depends-all,CFG_REE_FS_TA_BUFFERED,CFG_REE_FS_TA))
 
 # Support for loading user TAs from a special section in the TEE binary.
 # Such TAs are available even before tee-supplicant is available (hence their
@@ -275,6 +304,16 @@ CFG_DT ?= n
 # editing of the supplied DTB.
 CFG_DTB_MAX_SIZE ?= 0x10000
 
+# Device Tree Overlay support.
+# This define enables support for an OP-TEE provided DTB overlay.
+# One of two modes is supported in this case:
+# 1. Append OP-TEE nodes to an existing DTB overlay located at CFG_DT_ADDR or
+#    passed in arg2
+# 2. Generate a new DTB overlay at CFG_DT_ADDR
+# A subsequent boot stage must then merge the generated overlay DTB into a main
+# DTB using the standard fdt_overlay_apply() method.
+CFG_EXTERNAL_DTB_OVERLAY ?= n
+
 # Enable core self tests and related pseudo TAs
 CFG_TEE_CORE_EMBED_INTERNAL_TESTS ?= y
 
@@ -285,6 +324,10 @@ CFG_BOOT_SECONDARY_REQUEST ?= n
 
 # Default heap size for Core, 64 kB
 CFG_CORE_HEAP_SIZE ?= 65536
+
+# Default size of nexus heap. 16 kB. Used only if CFG_VIRTUALIZATION
+# is enabled
+CFG_CORE_NEX_HEAP_SIZE ?= 16384
 
 # TA profiling.
 # When this option is enabled, OP-TEE can execute Trusted Applications
@@ -302,6 +345,16 @@ ifneq ($(CFG_TA_GPROF_SUPPORT),y)
 $(error Cannot instrument user libraries if user mode profiling is disabled)
 endif
 endif
+
+# Build libutee, libutils, libmpa/libmbedtls as shared libraries.
+# - Static libraries are still generated when this is enabled, but TAs will use
+# the shared libraries unless explicitly linked with the -static flag.
+# - Shared libraries are made of two files: for example, libutee is
+#   libutee.so and 527f1a47-b92c-4a74-95bd-72f19f4a6f74.ta. The '.so' file
+#   is a totally standard shared object, and should be used to link against.
+#   The '.ta' file is a signed version of the '.so' and should be installed
+#   in the same way as TAs so that they can be found at runtime.
+CFG_ULIBS_SHARED ?= n
 
 # CFG_GP_SOCKETS
 # Enable Global Platform Sockets support
@@ -324,6 +377,10 @@ $(eval $(call cfg-depends-all,CFG_SECSTOR_TA_MGMT_PTA,CFG_SECSTOR_TA))
 # Enable the pseudo TA for misc. auxilary services, extending existing
 # GlobalPlatform Core API (for example, re-seeding RNG entropy pool etc.)
 CFG_SYSTEM_PTA ?= y
+
+# Enable the pseudo TA for enumeration of TEE based devices for the normal
+# world OS.
+CFG_DEVICE_ENUM_PTA ?= y
 
 # Define the number of cores per cluster used in calculating core position.
 # The cluster number is shifted by this value and added to the core ID,
@@ -365,3 +422,16 @@ CFG_TA_MBEDTLS_SELF_TEST ?= y
 # Enable TEE_ALG_RSASSA_PKCS1_V1_5 algorithm for signing with PKCS#1 v1.5 EMSA
 # # without ASN.1 around the hash.
 CFG_CRYPTO_RSASSA_NA1 ?= y
+
+# Enable virtualization support. OP-TEE will not work without compatible
+# hypervisor if this option is enabled.
+CFG_VIRTUALIZATION ?= n
+
+ifeq ($(CFG_VIRTUALIZATION),y)
+$(call force,CFG_CORE_RODATA_NOEXEC,y)
+$(call force,CFG_CORE_RWDATA_NOEXEC,y)
+
+# Default number of virtual guests
+CFG_VIRT_GUEST_COUNT ?= 2
+endif
+

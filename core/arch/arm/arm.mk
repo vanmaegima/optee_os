@@ -143,6 +143,20 @@ core-platform-aflags += $(core_arm32-platform-aflags)
 core-platform-aflags += $(arm32-platform-aflags)
 endif
 
+# Provide default supported-ta-targets if not set by the platform config
+ifeq (,$(supported-ta-targets))
+supported-ta-targets = ta_arm32
+ifeq ($(CFG_ARM64_core),y)
+supported-ta-targets += ta_arm64
+endif
+endif
+
+ta-targets := $(if $(CFG_USER_TA_TARGETS),$(filter $(supported-ta-targets),$(CFG_USER_TA_TARGETS)),$(supported-ta-targets))
+unsup-targets := $(filter-out $(ta-targets),$(CFG_USER_TA_TARGETS))
+ifneq (,$(unsup-targets))
+$(error CFG_USER_TA_TARGETS contains unsupported value(s): $(unsup-targets). Valid values: $(supported-ta-targets))
+endif
+
 ifneq ($(filter ta_arm32,$(ta-targets)),)
 # Variables for ta-target/sm "ta_arm32"
 CFG_ARM32_ta_arm32 := y
@@ -151,7 +165,7 @@ ta_arm32-platform-cppflags += $(arm32-platform-cppflags)
 ta_arm32-platform-cflags += $(arm32-platform-cflags)
 ta_arm32-platform-cflags += $(platform-cflags-optimization)
 ta_arm32-platform-cflags += $(platform-cflags-debug-info)
-ta_arm32-platform-cflags += -fpie
+ta_arm32-platform-cflags += -fpic
 ta_arm32-platform-cflags += $(arm32-platform-cflags-generic)
 ifeq ($(arm32-platform-hard-float-enabled),y)
 ta_arm32-platform-cflags += $(arm32-platform-cflags-hard-float)
@@ -183,7 +197,7 @@ ta_arm64-platform-cppflags += $(arm64-platform-cppflags)
 ta_arm64-platform-cflags += $(arm64-platform-cflags)
 ta_arm64-platform-cflags += $(platform-cflags-optimization)
 ta_arm64-platform-cflags += $(platform-cflags-debug-info)
-ta_arm64-platform-cflags += -fpie
+ta_arm64-platform-cflags += -fpic
 ta_arm64-platform-cflags += $(arm64-platform-cflags-generic)
 ifeq ($(arm64-platform-hard-float-enabled),y)
 ta_arm64-platform-cflags += $(arm64-platform-cflags-hard-float)

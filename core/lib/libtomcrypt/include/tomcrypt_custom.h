@@ -83,7 +83,7 @@
 #endif
 #ifndef XMEM_NEQ
 #include <string_ext.h>
-#define XMEM_NEQ  buf_compare_ct
+#define XMEM_NEQ consttime_memcmp
 #endif
 #ifndef XSTRCMP
    #ifdef strcmp
@@ -199,6 +199,9 @@
 #endif
 #ifdef CFG_CRYPTO_SHA512
 #define LTC_SHA512
+#endif
+#ifdef CFG_CRYPTO_SHA512_256
+#define LTC_SHA512_256
 #endif
 
 #define LTC_NO_MACS

@@ -192,7 +192,7 @@ static TEE_Result tee_svc_storage_read_head(struct tee_obj *o)
 	res = fops->read(o->fh, 0, &head, &bytes);
 	if (res != TEE_SUCCESS) {
 		if (res == TEE_ERROR_CORRUPT_OBJECT)
-			EMSG("Head corrupt\n");
+			EMSG("Head corrupt");
 		goto exit;
 	}
 
@@ -477,11 +477,12 @@ err:
 		res = TEE_ERROR_CORRUPT_OBJECT;
 	if (res == TEE_ERROR_CORRUPT_OBJECT && po)
 		fops->remove(po);
-	if (o)
+	if (o) {
 		fops->close(&o->fh);
+		tee_obj_free(o);
+	}
 	if (po)
 		tee_pobj_release(po);
-	free(o);
 
 	return res;
 }
@@ -569,7 +570,7 @@ TEE_Result syscall_storage_obj_rename(unsigned long obj, void *object_id,
 
 	/* move */
 	res = fops->rename(o->pobj, po, false /* no overwrite */);
-	if (res == TEE_ERROR_GENERIC)
+	if (res)
 		goto exit;
 
 	res = tee_pobj_rename(o->pobj, object_id, object_id_len);
@@ -777,7 +778,8 @@ TEE_Result syscall_storage_next_enum(unsigned long obj_enum,
 exit:
 	if (o) {
 		if (o->pobj) {
-			o->pobj->fops->close(&o->fh);
+			if (o->pobj->fops)
+				o->pobj->fops->close(&o->fh);
 			free(o->pobj->obj_id);
 		}
 		free(o->pobj);
@@ -828,9 +830,8 @@ TEE_Result syscall_storage_obj_read(unsigned long obj, void *data, size_t len,
 	res = o->pobj->fops->read(o->fh, o->ds_pos + o->info.dataPosition,
 				  data, &bytes);
 	if (res != TEE_SUCCESS) {
-		EMSG("Error code=%x\n", (uint32_t)res);
 		if (res == TEE_ERROR_CORRUPT_OBJECT) {
-			EMSG("Object corrupt\n");
+			EMSG("Object corrupt");
 			tee_svc_storage_remove_corrupt_obj(sess, o);
 		}
 		goto exit;
@@ -926,7 +927,7 @@ TEE_Result syscall_storage_obj_trunc(unsigned long obj, size_t len)
 	res = o->pobj->fops->truncate(o->fh, len + off);
 	if (res != TEE_SUCCESS) {
 		if (res == TEE_ERROR_CORRUPT_OBJECT) {
-			EMSG("Object corrupt\n");
+			EMSG("Object corrupt");
 			res = tee_svc_storage_remove_corrupt_obj(sess, o);
 			if (res != TEE_SUCCESS)
 				goto exit;

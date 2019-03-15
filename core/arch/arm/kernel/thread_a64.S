@@ -20,7 +20,7 @@
 	.macro get_thread_ctx core_local, res, tmp0, tmp1
 		ldr	w\tmp0, [\core_local, \
 				#THREAD_CORE_LOCAL_CURR_THREAD]
-		adr	x\res, threads
+		ldr	x\res, =threads
 		mov	x\tmp1, #THREAD_CTX_SIZE
 		madd	x\res, x\tmp0, x\tmp1, x\res
 	.endm
@@ -229,13 +229,21 @@ FUNC thread_rpc , :
 	str	x2, [x19, #THREAD_CTX_REGS_SP]
 	ldr	x20, [sp]	/* Get pointer to rv[] */
 	mov	sp, x0		/* Switch to tmp stack */
+	/*
+	 * We need to read rv[] early, because thread_state_suspend
+	 * can invoke virt_unset_guest() which will unmap pages,
+	 * where rv[] resides
+	 */
+	load_wregs x20, 0, 21, 23	/* Load rv[] into w20-w22 */
 
 	adr	x2, .thread_rpc_return
 	mov	w0, #THREAD_FLAGS_COPY_ARGS_ON_RETURN
 	bl	thread_state_suspend
 	mov	x4, x0		/* Supply thread index */
 	ldr	w0, =TEESMC_OPTEED_RETURN_CALL_DONE
-	load_wregs x20, 0, 1, 3	/* Load rv[] into w0-w2 */
+	mov	x1, x21
+	mov	x2, x22
+	mov	x3, x23
 	smc	#0
 	b	.		/* SMC should not return */
 
@@ -317,6 +325,7 @@ FUNC __thread_enter_user_mode , :
 	store_xregs sp, THREAD_CORE_LOCAL_X0, 0, 1
 	b eret_to_el0
 END_FUNC __thread_enter_user_mode
+KEEP_PAGER __thread_enter_user_mode
 
 /*
  * void thread_unwind_user_mode(uint32_t ret, uint32_t exit_status0,
@@ -694,7 +703,11 @@ eret_to_el0:
 #endif /*CFG_CORE_UNMAP_CORE_AT_EL0*/
 
 	eret
-
+	/*
+	 * Make sure that literals are placed before the
+	 * thread_excp_vect_end label.
+	 */
+	.pool
 	.global thread_excp_vect_end
 thread_excp_vect_end:
 END_FUNC thread_excp_vect

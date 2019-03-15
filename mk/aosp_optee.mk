@@ -83,7 +83,7 @@ $(OPTEE_BIN):
 	@echo "Start building optee_os..."
 	+$(HOST_MAKE) -C $(TOP_ROOT_ABS)/$(OPTEE_OS_DIR) \
 		O=$(ABS_OPTEE_OS_OUT_DIR) \
-		ta-targets=$(OPTEE_TA_TARGETS) \
+		CFG_USER_TA_TARGETS=$(OPTEE_TA_TARGETS) \
 		CFG_ARM64_core=$(OPTEE_CFG_ARM64_CORE) \
 		PLATFORM=$(OPTEE_PLATFORM) \
 		PLATFORM_FLAVOR=$(OPTEE_PLATFORM_FLAVOR) \
@@ -112,7 +112,7 @@ TA_TMP_DIR := $(subst /,_,$(LOCAL_PATH))
 TA_TMP_FILE := $(OPTEE_TA_OUT_DIR)/$(TA_TMP_DIR)/$(LOCAL_MODULE)
 $(LOCAL_PREBUILT_MODULE_FILE): $(TA_TMP_FILE)
 	@mkdir -p $(dir $@)
-	cp -uvf $< $@
+	cp -vf $< $@
 
 TA_TMP_FILE_DEPS :=
 ifneq ($(local_module_deps), )

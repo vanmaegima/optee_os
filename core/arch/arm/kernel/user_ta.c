@@ -153,10 +153,11 @@ static TEE_Result get_elf_segments(struct user_ta_elf *elf,
 				return TEE_ERROR_OUT_OF_MEMORY;
 			}
 			segs = p;
-			segs[num_segs].offs = ROUNDDOWN(va, SMALL_PAGE_SIZE);
-			segs[num_segs].oend = ROUNDUP(va + size,
-						      SMALL_PAGE_SIZE);
-			segs[num_segs].flags = flags;
+			segs[num_segs] = (struct load_seg) {
+				.offs = ROUNDDOWN(va, SMALL_PAGE_SIZE),
+				.oend = ROUNDUP(va + size, SMALL_PAGE_SIZE),
+				.flags = flags,
+			};
 			num_segs++;
 		} else if (type == PT_ARM_EXIDX) {
 			elf->exidx_start = va;
@@ -177,8 +178,8 @@ static TEE_Result get_elf_segments(struct user_ta_elf *elf,
 			segs[idx - 1].flags |= segs[idx].flags;
 
 			/* Remove this index */
-			memcpy(segs + idx, segs + idx + 1,
-			       (num_segs - idx - 1) * sizeof(*segs));
+			memmove(segs + idx, segs + idx + 1,
+				(num_segs - idx - 1) * sizeof(*segs));
 			num_segs--;
 		} else {
 			idx++;
@@ -197,8 +198,12 @@ static struct mobj *alloc_ta_mem(size_t size)
 #else
 	struct mobj *mobj = mobj_mm_alloc(mobj_sec_ddr, size, &tee_mm_sec_ddr);
 
-	if (mobj)
-		memset(mobj_get_va(mobj, 0), 0, size);
+	if (mobj) {
+		size_t granularity = BIT(tee_mm_sec_ddr.shift);
+
+		/* Round up to allocation granularity size */
+		memset(mobj_get_va(mobj, 0), 0, ROUNDUP(size, granularity));
+	}
 	return mobj;
 #endif
 }
@@ -307,7 +312,7 @@ static TEE_Result user_ta_enter(TEE_ErrorOrigin *err,
 	serr = TEE_ORIGIN_TRUSTED_APP;
 
 	if (utc->ctx.panicked) {
-		DMSG("tee_user_ta_enter: TA panicked with code 0x%x\n",
+		DMSG("tee_user_ta_enter: TA panicked with code 0x%x",
 		     utc->ctx.panic_code);
 		serr = TEE_ORIGIN_TEE;
 		res = TEE_ERROR_TARGET_DEAD;
@@ -420,8 +425,8 @@ static void user_ta_dump_state(struct tee_ta_ctx *ctx)
 
 		mattr_perm_to_str(flags, sizeof(flags), r->attr);
 		describe_region(utc, r->va, r->size, desc, sizeof(desc));
-		EMSG_RAW(" region %zu: va %#" PRIxVA " pa %#" PRIxPA
-			 " size %#zx flags %s %s",
+		EMSG_RAW(" region %2zu: va %#" PRIxVA " pa %#" PRIxPA
+			 " size 0x%06zx flags %s %s",
 			 n, r->va, pa, r->size, flags, desc);
 		n++;
 	}
@@ -497,9 +502,6 @@ static const struct tee_ta_ops user_ta_ops __rodata_unpaged = {
 	.get_instance_id = user_ta_get_instance_id,
 };
 
-static SLIST_HEAD(uta_stores_head, user_ta_store_ops) uta_store_list =
-		SLIST_HEAD_INITIALIZER(uta_stores_head);
-
 /*
  * Break unpaged attribute dependency propagation to user_ta_ops structure
  * content thanks to a runtime initialization of the ops reference.
@@ -524,31 +526,16 @@ bool is_user_ta_ctx(struct tee_ta_ctx *ctx)
 	return ctx->ops == _user_ta_ops;
 }
 
-TEE_Result tee_ta_register_ta_store(struct user_ta_store_ops *ops)
+static TEE_Result check_ta_store(void)
 {
-	struct user_ta_store_ops *p = NULL;
-	struct user_ta_store_ops *e;
+	const struct user_ta_store_ops *op = NULL;
 
-	DMSG("Registering TA store: '%s' (priority %d)", ops->description,
-	     ops->priority);
-
-	SLIST_FOREACH(e, &uta_store_list, link) {
-		/*
-		 * Do not allow equal priorities to avoid any dependency on
-		 * registration order.
-		 */
-		assert(e->priority != ops->priority);
-		if (e->priority > ops->priority)
-			break;
-		p = e;
-	}
-	if (p)
-		SLIST_INSERT_AFTER(p, ops, link);
-	else
-		SLIST_INSERT_HEAD(&uta_store_list, ops, link);
+	SCATTERED_ARRAY_FOREACH(op, ta_stores, struct user_ta_store_ops)
+		DMSG("TA store: \"%s\"", op->description);
 
 	return TEE_SUCCESS;
 }
+service_init(check_ta_store);
 
 #ifdef CFG_TA_DYNLINK
 
@@ -759,6 +746,11 @@ static TEE_Result load_elf_from_store(const TEE_UUID *uuid,
 		/* Ensure proper alignment of stack */
 		size_t stack_sz = ROUNDUP(ta_head->stack_size,
 					  STACK_ALIGNMENT);
+
+		if (!stack_sz) {
+			res = TEE_ERROR_OUT_OF_MEMORY;
+			goto out;
+		}
 		utc->mobj_stack = alloc_ta_mem(stack_sz);
 		if (!utc->mobj_stack) {
 			res = TEE_ERROR_OUT_OF_MEMORY;
@@ -833,21 +825,24 @@ out:
 /* Loads a single ELF file (main executable or library) */
 static TEE_Result load_elf(const TEE_UUID *uuid, struct user_ta_ctx *utc)
 {
-	const struct user_ta_store_ops *store;
 	TEE_Result res;
+	const struct user_ta_store_ops *op = NULL;
 
-	SLIST_FOREACH(store, &uta_store_list, link) {
+	SCATTERED_ARRAY_FOREACH(op, ta_stores, struct user_ta_store_ops) {
 		DMSG("Lookup user TA ELF %pUl (%s)", (void *)uuid,
-		     store->description);
-		res = load_elf_from_store(uuid, store, utc);
+		     op->description);
+
+		res = load_elf_from_store(uuid, op, utc);
 		if (res == TEE_ERROR_ITEM_NOT_FOUND)
 			continue;
 		if (res) {
 			DMSG("res=0x%x", res);
 			continue;
 		}
+
 		return res;
 	}
+
 	return TEE_ERROR_ITEM_NOT_FOUND;
 }
 

@@ -4,6 +4,7 @@
  */
 
 #include <assert.h>
+#include <compiler.h>
 #include <crypto/crypto.h>
 #include <kernel/tee_ta_manager.h>
 #include <mm/tee_mmu.h>
@@ -823,6 +824,28 @@ static const struct attr_ops attr_ops[] = {
 	},
 };
 
+static TEE_Result get_user_u64_as_size_t(size_t *dst, uint64_t *src)
+{
+	uint64_t d = 0;
+	TEE_Result res = tee_svc_copy_from_user(&d, src, sizeof(d));
+
+	/*
+	 * On 32-bit systems a size_t can't hold a uint64_t so we need to
+	 * check that the value isn't too large.
+	 */
+	if (!res && ADD_OVERFLOW(0, d, dst))
+		return TEE_ERROR_OVERFLOW;
+
+	return res;
+}
+
+static TEE_Result put_user_u64(uint64_t *dst, size_t value)
+{
+	uint64_t v = value;
+
+	return tee_svc_copy_to_user(dst, &v, sizeof(v));
+}
+
 TEE_Result syscall_cryp_obj_get_info(unsigned long obj, TEE_ObjectInfo *info)
 {
 	TEE_Result res;
@@ -1309,11 +1332,14 @@ static TEE_Result copy_in_attrs(struct user_ta_ctx *utc,
 {
 	TEE_Result res;
 	uint32_t n;
+	size_t size = 0;
+
+	if (MUL_OVERFLOW(sizeof(struct utee_attribute), attr_count, &size))
+		return TEE_ERROR_OVERFLOW;
 
 	res = tee_mmu_check_access_rights(utc,
 			TEE_MEMORY_ACCESS_READ | TEE_MEMORY_ACCESS_ANY_OWNER,
-			(uaddr_t)usr_attrs,
-			attr_count * sizeof(struct utee_attribute));
+			(uaddr_t)usr_attrs, size);
 	if (res != TEE_SUCCESS)
 		return res;
 
@@ -1547,9 +1573,15 @@ TEE_Result syscall_cryp_obj_populate(unsigned long obj,
 	if (!type_props)
 		return TEE_ERROR_NOT_IMPLEMENTED;
 
-	attrs = malloc(sizeof(TEE_Attribute) * attr_count);
+	size_t alloc_size = 0;
+
+	if (MUL_OVERFLOW(sizeof(TEE_Attribute), attr_count, &alloc_size))
+		return TEE_ERROR_OVERFLOW;
+
+	attrs = malloc(alloc_size);
 	if (!attrs)
 		return TEE_ERROR_OUT_OF_MEMORY;
+
 	res = copy_in_attrs(to_user_ta_ctx(sess->ctx), usr_attrs, attr_count,
 			    attrs);
 	if (res != TEE_SUCCESS)
@@ -1752,7 +1784,12 @@ TEE_Result syscall_obj_generate_key(unsigned long obj, unsigned long key_size,
 	if (key_size > type_props->max_size)
 		return TEE_ERROR_NOT_SUPPORTED;
 
-	params = malloc(sizeof(TEE_Attribute) * param_count);
+	size_t alloc_size = 0;
+
+	if (MUL_OVERFLOW(sizeof(TEE_Attribute), param_count, &alloc_size))
+		return TEE_ERROR_OVERFLOW;
+
+	params = malloc(alloc_size);
 	if (!params)
 		return TEE_ERROR_OUT_OF_MEMORY;
 	res = copy_in_attrs(to_user_ta_ctx(sess->ctx), usr_params, param_count,
@@ -2271,7 +2308,7 @@ TEE_Result syscall_hash_final(unsigned long state, const void *chunk,
 {
 	TEE_Result res, res2;
 	size_t hash_size;
-	uint64_t hlen;
+	size_t hlen = 0;
 	struct tee_cryp_state *cs;
 	struct tee_ta_session *sess;
 
@@ -2290,7 +2327,7 @@ TEE_Result syscall_hash_final(unsigned long state, const void *chunk,
 	if (res != TEE_SUCCESS)
 		return res;
 
-	res = tee_svc_copy_from_user(&hlen, hash_len, sizeof(hlen));
+	res = get_user_u64_as_size_t(&hlen, hash_len);
 	if (res != TEE_SUCCESS)
 		return res;
 
@@ -2311,7 +2348,7 @@ TEE_Result syscall_hash_final(unsigned long state, const void *chunk,
 		res = tee_hash_get_digest_size(cs->algo, &hash_size);
 		if (res != TEE_SUCCESS)
 			return res;
-		if (*hash_len < hash_size) {
+		if (hlen < hash_size) {
 			res = TEE_ERROR_SHORT_BUFFER;
 			goto out;
 		}
@@ -2332,7 +2369,7 @@ TEE_Result syscall_hash_final(unsigned long state, const void *chunk,
 		res = tee_mac_get_digest_size(cs->algo, &hash_size);
 		if (res != TEE_SUCCESS)
 			return res;
-		if (*hash_len < hash_size) {
+		if (hlen < hash_size) {
 			res = TEE_ERROR_SHORT_BUFFER;
 			goto out;
 		}
@@ -2353,8 +2390,7 @@ TEE_Result syscall_hash_final(unsigned long state, const void *chunk,
 		return TEE_ERROR_BAD_PARAMETERS;
 	}
 out:
-	hlen = hash_size;
-	res2 = tee_svc_copy_to_user(hash_len, &hlen, sizeof(*hash_len));
+	res2 = put_user_u64(hash_len, hash_size);
 	if (res2 != TEE_SUCCESS)
 		return res2;
 	return res;
@@ -2423,7 +2459,7 @@ static TEE_Result tee_svc_cipher_update_helper(unsigned long state,
 	TEE_Result res;
 	struct tee_cryp_state *cs;
 	struct tee_ta_session *sess;
-	uint64_t dlen;
+	size_t dlen = 0;
 
 	res = tee_ta_get_current_session(&sess);
 	if (res != TEE_SUCCESS)
@@ -2443,7 +2479,7 @@ static TEE_Result tee_svc_cipher_update_helper(unsigned long state,
 	if (!dst_len) {
 		dlen = 0;
 	} else {
-		res = tee_svc_copy_from_user(&dlen, dst_len, sizeof(dlen));
+		res = get_user_u64_as_size_t(&dlen, dst_len);
 		if (res != TEE_SUCCESS)
 			return res;
 
@@ -2477,8 +2513,7 @@ out:
 	    dst_len != NULL) {
 		TEE_Result res2;
 
-		dlen = src_len;
-		res2 = tee_svc_copy_to_user(dst_len, &dlen, sizeof(*dst_len));
+		res2 = put_user_u64(dst_len, src_len);
 		if (res2 != TEE_SUCCESS)
 			res = res2;
 	}
@@ -2661,7 +2696,12 @@ TEE_Result syscall_cryp_derive_key(unsigned long state,
 	if (res != TEE_SUCCESS)
 		return res;
 
-	params = malloc(sizeof(TEE_Attribute) * param_count);
+	size_t alloc_size = 0;
+
+	if (MUL_OVERFLOW(sizeof(TEE_Attribute), param_count, &alloc_size))
+		return TEE_ERROR_OVERFLOW;
+
+	params = malloc(alloc_size);
 	if (!params)
 		return TEE_ERROR_OUT_OF_MEMORY;
 	res = copy_in_attrs(utc, usr_params, param_count, params);
@@ -2688,7 +2728,6 @@ TEE_Result syscall_cryp_derive_key(unsigned long state,
 	}
 
 	if (cs->algo == TEE_ALG_DH_DERIVE_SHARED_SECRET) {
-		size_t alloc_size;
 		struct bignum *pub;
 		struct bignum *ss;
 
@@ -2698,12 +2737,18 @@ TEE_Result syscall_cryp_derive_key(unsigned long state,
 			goto out;
 		}
 
-		alloc_size = params[0].content.ref.length * 8;
+		size_t bin_size = params[0].content.ref.length;
+
+		if (MUL_OVERFLOW(bin_size, 8, &alloc_size)) {
+			res = TEE_ERROR_OVERFLOW;
+			goto out;
+		}
+
 		pub = crypto_bignum_allocate(alloc_size);
 		ss = crypto_bignum_allocate(alloc_size);
 		if (pub && ss) {
 			crypto_bignum_bin2bn(params[0].content.ref.buffer,
-					     params[0].content.ref.length, pub);
+					     bin_size, pub);
 			res = crypto_acipher_dh_shared_secret(ko->attr,
 							      pub, ss);
 			if (res == TEE_SUCCESS) {
@@ -2720,7 +2765,6 @@ TEE_Result syscall_cryp_derive_key(unsigned long state,
 		crypto_bignum_free(pub);
 		crypto_bignum_free(ss);
 	} else if (TEE_ALG_GET_MAIN_ALG(cs->algo) == TEE_MAIN_ALGO_ECDH) {
-		size_t alloc_size;
 		struct ecc_public_key key_public;
 		uint8_t *pt_secret;
 		unsigned long pt_secret_len;
@@ -2913,6 +2957,13 @@ TEE_Result syscall_authenc_init(unsigned long state, const void *nonce,
 	if (res != TEE_SUCCESS)
 		return res;
 
+	res = tee_mmu_check_access_rights(to_user_ta_ctx(sess->ctx),
+					  TEE_MEMORY_ACCESS_READ |
+					  TEE_MEMORY_ACCESS_ANY_OWNER,
+					  (uaddr_t)nonce, nonce_len);
+	if (res != TEE_SUCCESS)
+		return res;
+
 	res = tee_svc_cryp_get_state(sess, tee_svc_uref_to_vaddr(state), &cs);
 	if (res != TEE_SUCCESS)
 		return res;
@@ -2973,8 +3024,7 @@ TEE_Result syscall_authenc_update_payload(unsigned long state,
 	TEE_Result res;
 	struct tee_cryp_state *cs;
 	struct tee_ta_session *sess;
-	uint64_t dlen;
-	size_t tmp_dlen;
+	size_t dlen = 0;
 
 	res = tee_ta_get_current_session(&sess);
 	if (res != TEE_SUCCESS)
@@ -2991,7 +3041,7 @@ TEE_Result syscall_authenc_update_payload(unsigned long state,
 	if (res != TEE_SUCCESS)
 		return res;
 
-	res = tee_svc_copy_from_user(&dlen, dst_len, sizeof(dlen));
+	res = get_user_u64_as_size_t(&dlen, dst_len);
 	if (res != TEE_SUCCESS)
 		return res;
 
@@ -3008,16 +3058,13 @@ TEE_Result syscall_authenc_update_payload(unsigned long state,
 		goto out;
 	}
 
-	tmp_dlen = dlen;
 	res = crypto_authenc_update_payload(cs->ctx, cs->algo, cs->mode,
 					    src_data, src_len, dst_data,
-					    &tmp_dlen);
-	dlen = tmp_dlen;
-
+					    &dlen);
 out:
 	if (res == TEE_SUCCESS || res == TEE_ERROR_SHORT_BUFFER) {
-		TEE_Result res2 = tee_svc_copy_to_user(dst_len, &dlen,
-						       sizeof(*dst_len));
+		TEE_Result res2 = put_user_u64(dst_len, dlen);
+
 		if (res2 != TEE_SUCCESS)
 			res = res2;
 	}
@@ -3032,10 +3079,8 @@ TEE_Result syscall_authenc_enc_final(unsigned long state,
 	TEE_Result res;
 	struct tee_cryp_state *cs;
 	struct tee_ta_session *sess;
-	uint64_t dlen;
-	uint64_t tlen = 0;
-	size_t tmp_dlen;
-	size_t tmp_tlen;
+	size_t dlen = 0;
+	size_t tlen = 0;
 
 	res = tee_ta_get_current_session(&sess);
 	if (res != TEE_SUCCESS)
@@ -3058,7 +3103,7 @@ TEE_Result syscall_authenc_enc_final(unsigned long state,
 	if (!dst_len) {
 		dlen = 0;
 	} else {
-		res = tee_svc_copy_from_user(&dlen, dst_len, sizeof(dlen));
+		res = get_user_u64_as_size_t(&dlen, dst_len);
 		if (res != TEE_SUCCESS)
 			return res;
 
@@ -3076,7 +3121,7 @@ TEE_Result syscall_authenc_enc_final(unsigned long state,
 		goto out;
 	}
 
-	res = tee_svc_copy_from_user(&tlen, tag_len, sizeof(tlen));
+	res = get_user_u64_as_size_t(&tlen, tag_len);
 	if (res != TEE_SUCCESS)
 		return res;
 
@@ -3088,26 +3133,20 @@ TEE_Result syscall_authenc_enc_final(unsigned long state,
 	if (res != TEE_SUCCESS)
 		return res;
 
-	tmp_dlen = dlen;
-	tmp_tlen = tlen;
 	res = crypto_authenc_enc_final(cs->ctx, cs->algo, src_data,
-				       src_len, dst_data, &tmp_dlen, tag,
-				       &tmp_tlen);
-	dlen = tmp_dlen;
-	tlen = tmp_tlen;
+				       src_len, dst_data, &dlen, tag, &tlen);
 
 out:
 	if (res == TEE_SUCCESS || res == TEE_ERROR_SHORT_BUFFER) {
 		TEE_Result res2;
 
 		if (dst_len != NULL) {
-			res2 = tee_svc_copy_to_user(dst_len, &dlen,
-						    sizeof(*dst_len));
+			res2 = put_user_u64(dst_len, dlen);
 			if (res2 != TEE_SUCCESS)
 				return res2;
 		}
 
-		res2 = tee_svc_copy_to_user(tag_len, &tlen, sizeof(*tag_len));
+		res2 = put_user_u64(tag_len, tlen);
 		if (res2 != TEE_SUCCESS)
 			return res2;
 	}
@@ -3122,8 +3161,7 @@ TEE_Result syscall_authenc_dec_final(unsigned long state,
 	TEE_Result res;
 	struct tee_cryp_state *cs;
 	struct tee_ta_session *sess;
-	uint64_t dlen;
-	size_t tmp_dlen;
+	size_t dlen = 0;
 
 	res = tee_ta_get_current_session(&sess);
 	if (res != TEE_SUCCESS)
@@ -3146,7 +3184,7 @@ TEE_Result syscall_authenc_dec_final(unsigned long state,
 	if (!dst_len) {
 		dlen = 0;
 	} else {
-		res = tee_svc_copy_from_user(&dlen, dst_len, sizeof(dlen));
+		res = get_user_u64_as_size_t(&dlen, dst_len);
 		if (res != TEE_SUCCESS)
 			return res;
 
@@ -3171,17 +3209,14 @@ TEE_Result syscall_authenc_dec_final(unsigned long state,
 	if (res != TEE_SUCCESS)
 		return res;
 
-	tmp_dlen = dlen;
 	res = crypto_authenc_dec_final(cs->ctx, cs->algo, src_data, src_len,
-				       dst_data, &tmp_dlen, tag, tag_len);
-	dlen = tmp_dlen;
+				       dst_data, &dlen, tag, tag_len);
 
 out:
 	if ((res == TEE_SUCCESS || res == TEE_ERROR_SHORT_BUFFER) &&
 	    dst_len != NULL) {
-		TEE_Result res2;
+		TEE_Result res2 = put_user_u64(dst_len, dlen);
 
-		res2 = tee_svc_copy_to_user(dst_len, &dlen, sizeof(*dst_len));
 		if (res2 != TEE_SUCCESS)
 			return res2;
 	}
@@ -3218,7 +3253,6 @@ TEE_Result syscall_asymm_operate(unsigned long state,
 	TEE_Result res;
 	struct tee_cryp_state *cs;
 	struct tee_ta_session *sess;
-	uint64_t dlen64;
 	size_t dlen;
 	struct tee_obj *o;
 	void *label = NULL;
@@ -3244,10 +3278,9 @@ TEE_Result syscall_asymm_operate(unsigned long state,
 	if (res != TEE_SUCCESS)
 		return res;
 
-	res = tee_svc_copy_from_user(&dlen64, dst_len, sizeof(dlen64));
+	res = get_user_u64_as_size_t(&dlen, dst_len);
 	if (res != TEE_SUCCESS)
 		return res;
-	dlen = dlen64;
 
 	res = tee_mmu_check_access_rights(
 		utc,
@@ -3257,7 +3290,12 @@ TEE_Result syscall_asymm_operate(unsigned long state,
 	if (res != TEE_SUCCESS)
 		return res;
 
-	params = malloc(sizeof(TEE_Attribute) * num_params);
+	size_t alloc_size = 0;
+
+	if (MUL_OVERFLOW(sizeof(TEE_Attribute), num_params, &alloc_size))
+		return TEE_ERROR_OVERFLOW;
+
+	params = malloc(alloc_size);
 	if (!params)
 		return TEE_ERROR_OUT_OF_MEMORY;
 	res = copy_in_attrs(utc, usr_params, num_params, params);
@@ -3367,10 +3405,8 @@ out:
 	free(params);
 
 	if (res == TEE_SUCCESS || res == TEE_ERROR_SHORT_BUFFER) {
-		TEE_Result res2;
+		TEE_Result res2 = put_user_u64(dst_len, dlen);
 
-		dlen64 = dlen;
-		res2 = tee_svc_copy_to_user(dst_len, &dlen64, sizeof(*dst_len));
 		if (res2 != TEE_SUCCESS)
 			return res2;
 	}
@@ -3419,7 +3455,12 @@ TEE_Result syscall_asymm_verify(unsigned long state,
 	if (res != TEE_SUCCESS)
 		return res;
 
-	params = malloc(sizeof(TEE_Attribute) * num_params);
+	size_t alloc_size = 0;
+
+	if (MUL_OVERFLOW(sizeof(TEE_Attribute), num_params, &alloc_size))
+		return TEE_ERROR_OVERFLOW;
+
+	params = malloc(alloc_size);
 	if (!params)
 		return TEE_ERROR_OUT_OF_MEMORY;
 	res = copy_in_attrs(utc, usr_params, num_params, params);

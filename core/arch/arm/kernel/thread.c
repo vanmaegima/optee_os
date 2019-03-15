@@ -18,6 +18,7 @@
 #include <kernel/tee_ta_manager.h>
 #include <kernel/thread_defs.h>
 #include <kernel/thread.h>
+#include <kernel/virtualization.h>
 #include <mm/core_memprot.h>
 #include <mm/mobj.h>
 #include <mm/tee_mm.h>
@@ -71,7 +72,7 @@
 
 struct thread_ctx threads[CFG_NUM_THREADS];
 
-struct thread_core_local thread_core_local[CFG_TEE_CORE_NB_CORE];
+struct thread_core_local thread_core_local[CFG_TEE_CORE_NB_CORE] __nex_bss;
 
 #ifdef CFG_WITH_STACK_CANARIES
 #ifdef ARM32
@@ -118,31 +119,36 @@ const uint32_t stack_tmp_stride = sizeof(stack_tmp[0]);
 KEEP_PAGER(stack_tmp_export);
 KEEP_PAGER(stack_tmp_stride);
 
-thread_smc_handler_t thread_std_smc_handler_ptr;
-static thread_smc_handler_t thread_fast_smc_handler_ptr;
-thread_nintr_handler_t thread_nintr_handler_ptr;
-thread_pm_handler_t thread_cpu_on_handler_ptr;
-thread_pm_handler_t thread_cpu_off_handler_ptr;
-thread_pm_handler_t thread_cpu_suspend_handler_ptr;
-thread_pm_handler_t thread_cpu_resume_handler_ptr;
-thread_pm_handler_t thread_system_off_handler_ptr;
-thread_pm_handler_t thread_system_reset_handler_ptr;
+thread_smc_handler_t thread_std_smc_handler_ptr __nex_bss;
+static thread_smc_handler_t thread_fast_smc_handler_ptr __nex_bss;
+thread_nintr_handler_t thread_nintr_handler_ptr __nex_bss;
+thread_pm_handler_t thread_cpu_on_handler_ptr __nex_bss;
+thread_pm_handler_t thread_cpu_off_handler_ptr __nex_bss;
+thread_pm_handler_t thread_cpu_suspend_handler_ptr __nex_bss;
+thread_pm_handler_t thread_cpu_resume_handler_ptr __nex_bss;
+thread_pm_handler_t thread_system_off_handler_ptr __nex_bss;
+thread_pm_handler_t thread_system_reset_handler_ptr __nex_bss;
 
 #ifdef CFG_CORE_UNMAP_CORE_AT_EL0
-static vaddr_t thread_user_kcode_va;
-long thread_user_kcode_offset;
-static size_t thread_user_kcode_size;
+static vaddr_t thread_user_kcode_va __nex_bss;
+long thread_user_kcode_offset __nex_bss;
+static size_t thread_user_kcode_size __nex_bss;
 #endif
 
 #if defined(CFG_CORE_UNMAP_CORE_AT_EL0) && \
 	defined(CFG_CORE_WORKAROUND_SPECTRE_BP_SEC) && defined(ARM64)
-long thread_user_kdata_sp_offset;
+long thread_user_kdata_sp_offset __nex_bss;
 static uint8_t thread_user_kdata_page[
 	ROUNDUP(sizeof(thread_core_local), SMALL_PAGE_SIZE)]
-	__aligned(SMALL_PAGE_SIZE) __section(".nozi.kdata_page");
+	__aligned(SMALL_PAGE_SIZE)
+#ifndef CFG_VIRTUALIZATION
+	__section(".nozi.kdata_page");
+#else
+	__section(".nex_nozi.kdata_page");
+#endif
 #endif
 
-static unsigned int thread_global_lock = SPINLOCK_UNLOCK;
+static unsigned int thread_global_lock __nex_bss = SPINLOCK_UNLOCK;
 static bool thread_prealloc_rpc_cache;
 
 static unsigned int thread_rpc_pnum;
@@ -158,14 +164,14 @@ static void init_canaries(void)
 									\
 		*start_canary = START_CANARY_VALUE;			\
 		*end_canary = END_CANARY_VALUE;				\
-		DMSG("#Stack canaries for %s[%zu] with top at %p\n",	\
+		DMSG("#Stack canaries for %s[%zu] with top at %p",	\
 			#name, n, (void *)(end_canary - 1));		\
-		DMSG("watch *%p\n", (void *)end_canary);		\
+		DMSG("watch *%p", (void *)end_canary);			\
 	}
 
 	INIT_CANARY(stack_tmp);
 	INIT_CANARY(stack_abt);
-#ifndef CFG_WITH_PAGER
+#if !defined(CFG_WITH_PAGER) && !defined(CFG_VIRTUALIZATION)
 	INIT_CANARY(stack_thread);
 #endif
 #endif/*CFG_WITH_STACK_CANARIES*/
@@ -196,7 +202,7 @@ void thread_check_canaries(void)
 			CANARY_DIED(stack_abt, end, n);
 
 	}
-#ifndef CFG_WITH_PAGER
+#if !defined(CFG_WITH_PAGER) && !defined(CFG_VIRTUALIZATION)
 	for (n = 0; n < ARRAY_SIZE(stack_thread); n++) {
 		if (GET_START_CANARY(stack_thread, n) != START_CANARY_VALUE)
 			CANARY_DIED(stack_thread, start, n);
@@ -296,14 +302,6 @@ static void thread_lazy_save_ns_vfp(void)
 	struct thread_ctx *thr = threads + thread_get_id();
 
 	thr->vfp_state.ns_saved = false;
-#if defined(CFG_WITH_ARM_TRUSTED_FW)
-	/*
-	 * ARM TF saves and restores CPACR_EL1, so we must assume NS world
-	 * uses VFP and always preserve the register file when secure world
-	 * is about to use it
-	 */
-	thr->vfp_state.ns_force_save = true;
-#endif
 	vfp_lazy_save_state_init(&thr->vfp_state.ns);
 #endif /*CFG_WITH_VFP*/
 }
@@ -396,17 +394,8 @@ static void init_regs(struct thread_ctx *thread,
 void thread_init_boot_thread(void)
 {
 	struct thread_core_local *l = thread_get_core_local();
-	size_t n;
 
-	mutex_lockdep_init();
-
-	for (n = 0; n < CFG_NUM_THREADS; n++) {
-		TAILQ_INIT(&threads[n].tsd.sess_stack);
-		SLIST_INIT(&threads[n].tsd.pgt_cache);
-	}
-
-	for (n = 0; n < CFG_TEE_CORE_NB_CORE; n++)
-		thread_core_local[n].curr_thread = -1;
+	thread_init_threads();
 
 	l->curr_thread = 0;
 	threads[0].state = THREAD_STATE_ACTIVE;
@@ -565,8 +554,22 @@ static void thread_resume_from_rpc(struct thread_smc_args *args)
 void thread_handle_fast_smc(struct thread_smc_args *args)
 {
 	thread_check_canaries();
+
+#ifdef CFG_VIRTUALIZATION
+	if (!virt_set_guest(args->a7)) {
+		args->a0 = OPTEE_SMC_RETURN_ENOTAVAIL;
+		goto out;
+	}
+#endif
+
 	thread_fast_smc_handler_ptr(args);
+
+#ifdef CFG_VIRTUALIZATION
+	virt_unset_guest();
+#endif
 	/* Fast handlers must not unmask any exceptions */
+out:
+	__maybe_unused;
 	assert(thread_get_exceptions() == THREAD_EXCP_ALL);
 }
 
@@ -574,10 +577,22 @@ void thread_handle_std_smc(struct thread_smc_args *args)
 {
 	thread_check_canaries();
 
+#ifdef CFG_VIRTUALIZATION
+	if (!virt_set_guest(args->a7)) {
+		args->a0 = OPTEE_SMC_RETURN_ENOTAVAIL;
+		return;
+	}
+#endif
+
 	if (args->a0 == OPTEE_SMC_CALL_RETURN_FROM_RPC)
 		thread_resume_from_rpc(args);
 	else
 		thread_alloc_and_run(args);
+
+#ifdef CFG_VIRTUALIZATION
+	virt_unset_guest();
+#endif
+
 }
 
 /**
@@ -605,6 +620,9 @@ static void thread_rpc_free_arg(uint64_t cookie)
  */
 void __weak __thread_std_smc_entry(struct thread_smc_args *args)
 {
+#ifdef CFG_VIRTUALIZATION
+	virt_on_stdcall();
+#endif
 	thread_std_smc_handler_ptr(args);
 
 	if (args->a0 == OPTEE_SMC_RETURN_OK) {
@@ -703,6 +721,9 @@ void thread_state_free(void)
 	threads[ct].flags = 0;
 	l->curr_thread = -1;
 
+#ifdef CFG_VIRTUALIZATION
+	virt_unset_guest();
+#endif
 	unlock_global();
 }
 
@@ -766,6 +787,10 @@ int thread_state_suspend(uint32_t flags, uint32_t cpsr, vaddr_t pc)
 	}
 
 	l->curr_thread = -1;
+
+#ifdef CFG_VIRTUALIZATION
+	virt_unset_guest();
+#endif
 
 	unlock_global();
 
@@ -919,15 +944,30 @@ static void init_user_kcode(void)
 #endif /*CFG_CORE_UNMAP_CORE_AT_EL0*/
 }
 
+void thread_init_threads(void)
+{
+	size_t n;
+
+	init_thread_stacks();
+	pgt_init();
+
+	mutex_lockdep_init();
+
+	for (n = 0; n < CFG_NUM_THREADS; n++) {
+		TAILQ_INIT(&threads[n].tsd.sess_stack);
+		SLIST_INIT(&threads[n].tsd.pgt_cache);
+	}
+
+	for (n = 0; n < CFG_TEE_CORE_NB_CORE; n++)
+		thread_core_local[n].curr_thread = -1;
+}
+
 void thread_init_primary(const struct thread_handlers *handlers)
 {
 	init_handlers(handlers);
 
 	/* Initialize canaries around the stacks */
 	init_canaries();
-
-	init_thread_stacks();
-	pgt_init();
 
 	init_user_kcode();
 }
@@ -1094,7 +1134,7 @@ uint32_t thread_kernel_enable_vfp(void)
 
 	if (!thr->vfp_state.ns_saved) {
 		vfp_lazy_save_state_final(&thr->vfp_state.ns,
-					  thr->vfp_state.ns_force_save);
+					  true /*force_save*/);
 		thr->vfp_state.ns_saved = true;
 	} else if (thr->vfp_state.sec_lazy_saved &&
 		   !thr->vfp_state.sec_saved) {
@@ -1167,7 +1207,7 @@ void thread_user_enable_vfp(struct thread_user_vfp_state *uvfp)
 
 	if (!thr->vfp_state.ns_saved) {
 		vfp_lazy_save_state_final(&thr->vfp_state.ns,
-					  thr->vfp_state.ns_force_save);
+					  true /*force_save*/);
 		thr->vfp_state.ns_saved = true;
 	} else if (tuv && uvfp != tuv) {
 		if (tuv->lazy_saved && !tuv->saved) {
