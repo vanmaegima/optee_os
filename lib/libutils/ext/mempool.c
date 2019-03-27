@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSD-2-Clause
 /*
  * Copyright (c) 2014, STMicroelectronics International N.V.
- * Copyright (c) 2018, Linaro Limited
+ * Copyright (c) 2018-2019, Linaro Limited
  */
 
 
@@ -9,6 +9,7 @@
 #include <compiler.h>
 #include <malloc.h>
 #include <mempool.h>
+#include <string.h>
 #include <util.h>
 
 #if defined(__KERNEL__)
@@ -73,10 +74,15 @@ struct mempool {
 static void get_pool(struct mempool *pool __maybe_unused)
 {
 #if defined(__KERNEL__)
-	if (refcount_inc(&pool->refc)) {
-		if (pool->owner == thread_get_id())
-			return;
-		refcount_dec(&pool->refc);
+	/*
+	 * Owner matches our thread it cannot be changed. If it doesn't
+	 * match it can change any at time we're not holding the mutex to
+	 * any value but our thread id.
+	 */
+	if (atomic_load_int(&pool->owner) == thread_get_id()) {
+		if (!refcount_inc(&pool->refc))
+			panic();
+		return;
 	}
 
 	mutex_lock(&pool->mu);
@@ -95,12 +101,16 @@ static void get_pool(struct mempool *pool __maybe_unused)
 static void put_pool(struct mempool *pool __maybe_unused)
 {
 #if defined(__KERNEL__)
-	assert(pool->owner == thread_get_id());
+	assert(atomic_load_int(&pool->owner) == thread_get_id());
 
 	if (refcount_dec(&pool->refc)) {
 		mutex_lock(&pool->mu);
 
-		pool->owner = THREAD_ID_INVALID;
+		/*
+		 * Do an atomic store to match the atomic load in
+		 * get_pool() above.
+		 */
+		atomic_store_int(&pool->owner, THREAD_ID_INVALID);
 		condvar_signal(&pool->cv);
 
 		/* As the refcount is 0 there should be no items left */
@@ -184,6 +194,21 @@ error:
 	EMSG("Failed to allocate %zu bytes, please tune the pool size", size);
 	put_pool(pool);
 	return NULL;
+}
+
+void *mempool_calloc(struct mempool *pool, size_t nmemb, size_t size)
+{
+	size_t sz;
+	void *p;
+
+	if (MUL_OVERFLOW(nmemb, size, &sz))
+		return NULL;
+
+	p = mempool_alloc(pool, sz);
+	if (p)
+		memset(p, 0, sz);
+
+	return p;
 }
 
 void mempool_free(struct mempool *pool, void *ptr)

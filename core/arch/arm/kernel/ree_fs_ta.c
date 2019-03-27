@@ -54,6 +54,11 @@ static TEE_Result rpc_load(const TEE_UUID *uuid, struct shdr **ta,
 	if (!*mobj)
 		return TEE_ERROR_OUT_OF_MEMORY;
 
+	if ((*mobj)->size < params[1].u.memref.size) {
+		res = TEE_ERROR_SHORT_BUFFER;
+		goto exit;
+	}
+
 	*ta = mobj_get_va(*mobj, 0);
 	/* We don't expect NULL as thread_rpc_alloc_payload() was successful */
 	assert(*ta);
@@ -66,8 +71,10 @@ static TEE_Result rpc_load(const TEE_UUID *uuid, struct shdr **ta,
 	params[1].u.memref.mobj = *mobj;
 
 	res = thread_rpc_cmd(OPTEE_RPC_CMD_LOAD_TA, 2, params);
+exit:
 	if (res != TEE_SUCCESS)
 		thread_rpc_free_payload(*mobj);
+
 	return res;
 }
 
@@ -244,18 +251,10 @@ static void ta_close(struct user_ta_store_handle *h)
 	free(h);
 }
 
-static struct user_ta_store_ops ops = {
+TEE_TA_REGISTER_TA_STORE(9) = {
 	.description = "REE",
 	.open = ta_open,
 	.get_size = ta_get_size,
 	.read = ta_read,
 	.close = ta_close,
-	.priority = 10,
 };
-
-static TEE_Result register_supplicant_user_ta(void)
-{
-	return tee_ta_register_ta_store(&ops);
-}
-
-service_init(register_supplicant_user_ta);

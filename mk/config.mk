@@ -113,7 +113,7 @@ endif
 # with limited depth not including any tag, so there is really no guarantee
 # that TEE_IMPL_VERSION contains the major and minor revision numbers.
 CFG_OPTEE_REVISION_MAJOR ?= 3
-CFG_OPTEE_REVISION_MINOR ?= 3
+CFG_OPTEE_REVISION_MINOR ?= 4
 
 # Trusted OS implementation manufacturer name
 CFG_TEE_MANUFACTURER ?= LINARO
@@ -183,6 +183,27 @@ endif
 
 # Enable support for dynamically loaded user TAs
 CFG_WITH_USER_TA ?= y
+
+# Choosing the architecture(s) of user-mode libraries (used by TAs)
+#
+# Platforms may define a list of supported architectures for user-mode code
+# by setting $(supported-ta-targets). Valid values are "ta_arm32", "ta_arm64",
+# "ta_arm32 ta_arm64" and "ta_arm64 ta_arm32".
+# $(supported-ta-targets) defaults to "ta_arm32" when the TEE core is 32-bits,
+# and "ta_arm32 ta_arm64" when it is 64-bits (that is, when CFG_ARM64_core=y).
+# The first entry in $(supported-ta-targets) has a special role, see
+# CFG_USER_TA_TARGET_<ta-name> below.
+#
+# CFG_USER_TA_TARGETS may be defined to restrict $(supported-ta-targets) or
+# change the order of the values.
+#
+# The list of TA architectures is ultimately stored in $(ta-targets).
+
+# CFG_USER_TA_TARGET_<ta-name> (for example, CFG_USER_TA_TARGET_avb), if
+# defined, selects the unique TA architecture mode for building the in-tree TA
+# <ta-name>. Can be either ta_arm32 or ta_arm64.
+# By default, in-tree TAs are built using the first architecture specified in
+# $(ta-targets).
 
 # Load user TAs from the REE filesystem via tee-supplicant
 # There is currently no other alternative, but you may want to disable this in
@@ -275,6 +296,16 @@ CFG_DT ?= n
 # editing of the supplied DTB.
 CFG_DTB_MAX_SIZE ?= 0x10000
 
+# Device Tree Overlay support.
+# This define enables support for an OP-TEE provided DTB overlay.
+# One of two modes is supported in this case:
+# 1. Append OP-TEE nodes to an existing DTB overlay located at CFG_DT_ADDR or
+#    passed in arg2
+# 2. Generate a new DTB overlay at CFG_DT_ADDR
+# A subsequent boot stage must then merge the generated overlay DTB into a main
+# DTB using the standard fdt_overlay_apply() method.
+CFG_EXTERNAL_DTB_OVERLAY ?= n
+
 # Enable core self tests and related pseudo TAs
 CFG_TEE_CORE_EMBED_INTERNAL_TESTS ?= y
 
@@ -324,6 +355,10 @@ $(eval $(call cfg-depends-all,CFG_SECSTOR_TA_MGMT_PTA,CFG_SECSTOR_TA))
 # Enable the pseudo TA for misc. auxilary services, extending existing
 # GlobalPlatform Core API (for example, re-seeding RNG entropy pool etc.)
 CFG_SYSTEM_PTA ?= y
+
+# Enable the pseudo TA for enumeration of TEE based devices for the normal
+# world OS.
+CFG_DEVICE_ENUM_PTA ?= y
 
 # Define the number of cores per cluster used in calculating core position.
 # The cluster number is shifted by this value and added to the core ID,
