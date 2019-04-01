@@ -715,6 +715,7 @@ uint32_t entry_get_attribute_value(uintptr_t tee_session, TEE_Param *ctrl,
 	uint32_t object_handle = 0;
 	char *cur = NULL;
 	size_t len = 0;
+	size_t size = 0;
 	char *end = NULL;
 	bool attr_sensitive = 0;
 	bool attr_type_invalid = 0;
@@ -802,9 +803,10 @@ uint32_t entry_get_attribute_value(uintptr_t tee_session, TEE_Param *ctrl,
 		 * We assume that if size is 0, pValue was NULL, so we return
 		 * the size of the required buffer for it (3., 4.)
 		 */
+		size = cli_ref->size;
 		rv = get_attribute(obj->attributes, cli_ref->id,
-				   cli_ref->size ? cli_ref->data : NULL,
-				   &(cli_ref->size));
+				   size ? cli_ref->data : NULL, &size);
+		cli_ref->size = size;
 		/* Check 2. */
 		switch (rv) {
 		case SKS_OK:
