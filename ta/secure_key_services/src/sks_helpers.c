@@ -93,8 +93,6 @@ static const struct attr_size attr_ids[] = {
 	SKS_ID_SZ(SKS_CKA_WRAP_WITH_TRUSTED, 1),
 	/* Specific SKS attribute IDs */
 	SKS_ID_SZ(SKS_UNDEFINED_ID, 0),
-	SKS_ID_SZ(SKS_CKA_EC_POINT_X, 0),
-	SKS_ID_SZ(SKS_CKA_EC_POINT_Y, 0),
 };
 
 struct processing_id {
@@ -625,14 +623,13 @@ bool sks2tee_load_attr(TEE_Attribute *tee_ref, uint32_t tee_id,
 			struct sks_object *obj, uint32_t sks_id)
 {
 	void *a_ptr = NULL;
+	void *point = NULL;
 	size_t a_size = 0;
 	uint32_t data32 = 0;
 
 	switch (tee_id) {
 	case TEE_ATTR_ECC_PUBLIC_VALUE_X:
 	case TEE_ATTR_ECC_PUBLIC_VALUE_Y:
-		// FIXME: workaround until we get parse DER data
-		break;
 	case TEE_ATTR_ECC_CURVE:
 		if (get_attribute_ptr(obj->attributes, SKS_CKA_EC_PARAMS,
 					&a_ptr, &a_size)) {
@@ -640,9 +637,54 @@ bool sks2tee_load_attr(TEE_Attribute *tee_ref, uint32_t tee_id,
 			return false;
 		}
 
-		data32 = ec_params2tee_curve(a_ptr, a_size);
+		if (tee_id == TEE_ATTR_ECC_CURVE) {
+			data32 = ec_params2tee_curve(a_ptr, a_size);
+			TEE_InitValueAttribute(tee_ref, TEE_ATTR_ECC_CURVE,
+					data32, 0);
+			return true;
+		}
 
-		TEE_InitValueAttribute(tee_ref, TEE_ATTR_ECC_CURVE, data32, 0);
+		data32 = (ec_params2tee_keysize(a_ptr, a_size) + 7) / 8;
+		/*
+		 * Public X/Y is required for both TEE keypair and public key
+		 * but EC_POINT is only available for SKS public key objects.
+		 */
+		if (obj->key_type == TEE_TYPE_ECDSA_KEYPAIR ||
+				obj->key_type == TEE_TYPE_ECDH_KEYPAIR) {
+			/* Keypair requires public ecpoint, return empty */
+			point = TEE_Malloc(data32, TEE_MALLOC_FILL_ZERO);
+			TEE_InitRefAttribute(tee_ref, tee_id, point, data32);
+			return true;
+		}
+
+		if (get_attribute_ptr(obj->attributes, SKS_CKA_EC_POINT,
+					&a_ptr, &a_size)) {
+			EMSG("Missing EC_POINT attribute");
+			return false;
+		}
+
+		/* TODO: Support DER long definitive form */
+		if (a_size >= 0x80) {
+			EMSG("DER long definitive form not yet supported");
+			return false;
+		}
+		if (((char *)a_ptr)[2] != 0x04) {
+			EMSG("Unsupported EC_POINT form");
+			return false;
+		}
+		if (a_size != 2 + 2 * data32 + 1) {
+			EMSG("Invalid EC_POINT attribute");
+			return false;
+		}
+
+		point = TEE_Malloc(data32, TEE_MALLOC_FILL_ZERO);
+		if (tee_id == TEE_ATTR_ECC_PUBLIC_VALUE_X)
+			TEE_MemMove(point, (uint8_t *)a_ptr + 3, data32);
+		else
+			TEE_MemMove(point, (uint8_t *)a_ptr + 3 + data32,
+					data32);
+
+		TEE_InitRefAttribute(tee_ref, tee_id, point, data32);
 		return true;
 
 	default:
