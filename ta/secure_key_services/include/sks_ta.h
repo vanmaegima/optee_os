@@ -17,6 +17,10 @@
 #define SKS_VERSION_ID0		0
 #define SKS_VERSION_ID1		0
 
+/* Special values for ulong variables */
+#define SKS_UNAVAILABLE_INFORMATION	UINT32_MAX
+#define SKS_EFFECTIVELY_INFINITE	0
+
 /*
  * SKS_CMD_PING		Acknowledge TA presence and return TA version info
  *
