@@ -1194,8 +1194,18 @@ static uint32_t tee2sks_ec_attributes(struct sks_attrs_head **pub_head,
 		poffset = psize - y_size;
 	TEE_MemMove(ecpoint + 3 + psize + poffset, y_ptr, y_size);
 
+	/*
+	 * Add EC_POINT on both private and public key objects as
+	 * TEE_PopulateTransientObject requires public x/y values
+	 * for TEE_TYPE_ECDSA_KEYPAIR.
+	 */
+	rv = add_attribute(priv_head, SKS_CKA_EC_POINT, ecpoint, dersize);
+	if (rv)
+		goto priv_cleanup;
+
 	rv = add_attribute(pub_head, SKS_CKA_EC_POINT, ecpoint, dersize);
 
+priv_cleanup:
 	TEE_Free(ecpoint);
 p_cleanup:
 	TEE_Free(y_ptr);
