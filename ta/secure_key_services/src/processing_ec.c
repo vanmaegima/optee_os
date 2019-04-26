@@ -1168,7 +1168,7 @@ static uint32_t tee2sks_ec_attributes(struct sks_attrs_head **pub_head,
 		dersize = qsize + 2;
 	} else {
 		EMSG("DER long definitive form not yet supported");
-		rv = SKS_BAD_PARAM;
+		rv = SKS_CKR_MECHANISM_INVALID;
 		goto p_cleanup;
 	}
 
