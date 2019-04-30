@@ -458,6 +458,11 @@ uint32_t step_symm_operation(struct pkcs11_session *session,
 		    step == SKS_FUNC_STEP_ONESHOT)
 			break;
 
+		if (!in) {
+			DMSG("No input data");
+			return SKS_BAD_PARAM;
+		}
+
 		switch (function) {
 		case SKS_FUNCTION_ENCRYPT:
 		case SKS_FUNCTION_DECRYPT:
@@ -477,6 +482,11 @@ uint32_t step_symm_operation(struct pkcs11_session *session,
 	case SKS_CKM_AES_GCM:
 		if (step == SKS_FUNC_STEP_FINAL)
 			break;
+
+		if (!in) {
+			DMSG("No input data");
+			return SKS_BAD_PARAM;
+		}
 
 		switch (function) {
 		case SKS_FUNCTION_ENCRYPT:
@@ -545,6 +555,10 @@ uint32_t step_symm_operation(struct pkcs11_session *session,
 	case SKS_CKM_AES_CBC_PAD:
 	case SKS_CKM_AES_CTS:
 	case SKS_CKM_AES_CTR:
+		if (step == SKS_FUNC_STEP_ONESHOT && !in) {
+			DMSG("No input data");
+			return SKS_BAD_PARAM;
+		}
 		switch (function) {
 		case SKS_FUNCTION_ENCRYPT:
 		case SKS_FUNCTION_DECRYPT:
