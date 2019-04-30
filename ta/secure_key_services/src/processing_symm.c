@@ -398,6 +398,7 @@ uint32_t step_symm_operation(struct pkcs11_session *session,
 		default:
 			break;
 		}
+		break;
 	case SKS_CKM_AES_CTS:
 		switch (function) {
 		case SKS_FUNCTION_ENCRYPT:
