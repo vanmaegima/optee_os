@@ -1595,7 +1595,7 @@ uint32_t check_parent_attrs_against_processing(uint32_t proc_id,
 		}
 		if (key_class != SKS_CKO_PUBLIC_KEY &&
 		     key_class != SKS_CKO_PRIVATE_KEY) {
-			EMSG("Invalid key key class for mechanism %s",
+			EMSG("Invalid key class for mechanism %s",
 				sks2str_proc(proc_id));
 			return SKS_CKR_KEY_FUNCTION_NOT_PERMITTED;
 		}
@@ -1624,8 +1624,7 @@ uint32_t check_parent_attrs_against_processing(uint32_t proc_id,
 		}
 		if (key_class != SKS_CKO_PUBLIC_KEY &&
 		     key_class != SKS_CKO_PRIVATE_KEY) {
-			EMSG("Invalid key key class for mechanism %s",
-				sks2str_type(key_type, key_class),
+			EMSG("Invalid key class for mechanism %s",
 				sks2str_proc(proc_id));
 			return SKS_CKR_KEY_FUNCTION_NOT_PERMITTED;
 		}
