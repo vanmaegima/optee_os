@@ -634,7 +634,6 @@ bool sks2tee_load_attr(TEE_Attribute *tee_ref, uint32_t tee_id,
 			struct sks_object *obj, uint32_t sks_id)
 {
 	void *a_ptr = NULL;
-	void *point = NULL;
 	size_t a_size = 0;
 	uint32_t data32 = 0;
 
@@ -661,20 +660,11 @@ bool sks2tee_load_attr(TEE_Attribute *tee_ref, uint32_t tee_id,
 					&a_ptr, &a_size)) {
 			/*
 			 * Public X/Y is required for both TEE keypair and
-			 * public key but EC_POINT might only be available
-			 * for SKS public key objects.
+			 * public key, so abort if EC_POINT is not provided
+			 * during object import.
 			 */
-			if (obj->key_type == TEE_TYPE_ECDSA_KEYPAIR ||
-					obj->key_type == TEE_TYPE_ECDH_KEYPAIR) {
-				/* Return empty as ecpoint is not available */
-				point = TEE_Malloc(data32, TEE_MALLOC_FILL_ZERO);
-				TEE_InitRefAttribute(tee_ref, tee_id,
-						     point, data32);
-				return true;
-			} else {
-				EMSG("Missing EC_POINT attribute");
-				return false;
-			}
+			EMSG("Missing EC_POINT attribute");
+			return false;
 		}
 
 		/* TODO: Support DER long definitive form */
