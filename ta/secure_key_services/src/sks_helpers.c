@@ -691,14 +691,13 @@ bool sks2tee_load_attr(TEE_Attribute *tee_ref, uint32_t tee_id,
 			return false;
 		}
 
-		point = TEE_Malloc(data32, TEE_MALLOC_FILL_ZERO);
 		if (tee_id == TEE_ATTR_ECC_PUBLIC_VALUE_X)
-			TEE_MemMove(point, (uint8_t *)a_ptr + 3, data32);
+			TEE_InitRefAttribute(tee_ref, tee_id,
+					(uint8_t *)a_ptr + 3, data32);
 		else
-			TEE_MemMove(point, (uint8_t *)a_ptr + 3 + data32,
-					data32);
+			TEE_InitRefAttribute(tee_ref, tee_id,
+					(uint8_t *)a_ptr + 3 + data32, data32);
 
-		TEE_InitRefAttribute(tee_ref, tee_id, point, data32);
 		return true;
 
 	default:
