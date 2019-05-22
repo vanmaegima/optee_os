@@ -629,11 +629,25 @@ size_t get_supported_mechanisms(uint32_t *array, size_t array_count)
 	return m;
 }
 
-/* Initialize a TEE attribute for a target SKS attribute in an object */
+/*
+ * sks2tee_load_attr - initialize a TEE attribute for a target SKS attribute
+ *
+ * @tee_ref - TEE attribute reference
+ * @tee_id - TEE attribute ID
+ * @obj - SKS object attribute
+ * @sks_id - SKS object attribute ID
+ *
+ * It is expected for the caller to release the memory allocated for the
+ * desired ref TEE attribute (e.g. after TEE_PopulateTransientObject).
+ * Memory for ref TEE attributes are duplicated in order to make sure they
+ * are aligned.
+ *
+ */
 bool sks2tee_load_attr(TEE_Attribute *tee_ref, uint32_t tee_id,
 			struct sks_object *obj, uint32_t sks_id)
 {
 	void *a_ptr = NULL;
+	void *buf = NULL;
 	size_t a_size = 0;
 	uint32_t data32 = 0;
 
@@ -681,12 +695,12 @@ bool sks2tee_load_attr(TEE_Attribute *tee_ref, uint32_t tee_id,
 			return false;
 		}
 
+		buf = TEE_Malloc(data32, TEE_MALLOC_FILL_ZERO);
 		if (tee_id == TEE_ATTR_ECC_PUBLIC_VALUE_X)
-			TEE_InitRefAttribute(tee_ref, tee_id,
-					(uint8_t *)a_ptr + 3, data32);
+			TEE_MemMove(buf, (uint8_t *)a_ptr + 3, data32);
 		else
-			TEE_InitRefAttribute(tee_ref, tee_id,
-					(uint8_t *)a_ptr + 3 + data32, data32);
+			TEE_MemMove(buf, (uint8_t *)a_ptr + 3 + data32, data32);
+		TEE_InitRefAttribute(tee_ref, tee_id, buf, data32);
 
 		return true;
 
@@ -697,7 +711,9 @@ bool sks2tee_load_attr(TEE_Attribute *tee_ref, uint32_t tee_id,
 	if (get_attribute_ptr(obj->attributes, sks_id, &a_ptr, &a_size))
 		return false;
 
-	TEE_InitRefAttribute(tee_ref, tee_id, a_ptr, a_size);
+	buf = TEE_Malloc(a_size, TEE_MALLOC_FILL_ZERO);
+	TEE_MemMove(buf, a_ptr, a_size);
+	TEE_InitRefAttribute(tee_ref, tee_id, buf, a_size);
 
 	return true;
 }

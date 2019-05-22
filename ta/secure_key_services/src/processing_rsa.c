@@ -273,6 +273,7 @@ uint32_t load_tee_rsa_key_attrs(TEE_Attribute **tee_attrs, size_t *tee_count,
 {
 	TEE_Attribute *attrs = NULL;
 	size_t count = 0;
+	size_t n = 0;
 	uint32_t rv = SKS_ERROR;
 
 	assert(get_type(obj->attributes) == SKS_CKK_RSA);
@@ -362,10 +363,16 @@ uint32_t load_tee_rsa_key_attrs(TEE_Attribute **tee_attrs, size_t *tee_count,
 		break;
 	}
 
-	if (rv == SKS_OK) {
-		*tee_attrs = attrs;
-		*tee_count = count;
+	if (rv != SKS_OK) {
+		for (n = 0; n < count; n++) {
+			if (attrs[n].content.ref.length)
+				TEE_Free(attrs[n].content.ref.buffer);
+		}
+		return rv;
 	}
+
+	*tee_attrs = attrs;
+	*tee_count = count;
 
 	return rv;
 }

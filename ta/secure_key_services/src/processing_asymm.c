@@ -218,6 +218,7 @@ static uint32_t load_tee_key(struct pkcs11_session *session,
 	TEE_Attribute *tee_attrs = NULL;
 	size_t tee_attrs_count = 0;
 	size_t object_size = 0;
+	size_t n = 0;
 	uint32_t rv = 0;
 	TEE_Result res = TEE_ERROR_GENERIC;
 	uint32_t __maybe_unused class = get_class(obj->attributes);
@@ -269,6 +270,13 @@ static uint32_t load_tee_key(struct pkcs11_session *session,
 	if (!object_size)
 		return SKS_ERROR;
 
+	res = TEE_AllocateTransientObject(obj->key_type, object_size,
+					  &obj->key_handle);
+	if (res) {
+		DMSG("TEE_AllocateTransientObject failed, 0x%" PRIx32, res);
+		return tee2sks_error(res);
+	}
+
 	switch (type) {
 	case SKS_CKK_RSA:
 		rv = load_tee_rsa_key_attrs(&tee_attrs, &tee_attrs_count, obj);
@@ -279,19 +287,19 @@ static uint32_t load_tee_key(struct pkcs11_session *session,
 	default:
 		break;
 	}
-	if (rv)
-		return rv;
-
-	res = TEE_AllocateTransientObject(obj->key_type, object_size,
-					  &obj->key_handle);
-	if (res) {
-		DMSG("TEE_AllocateTransientObject failed, 0x%" PRIx32, res);
-		return tee2sks_error(res);
+	if (rv) {
+		rv = TEE_ERROR_BAD_PARAMETERS;
+		goto error;
 	}
 
 	res = TEE_PopulateTransientObject(obj->key_handle,
 					  tee_attrs, tee_attrs_count);
 
+	/* Release all ref attribute buffers */
+	for (n = 0; n < tee_attrs_count; n++) {
+		if (tee_attrs[n].content.ref.length)
+			TEE_Free(tee_attrs[n].content.ref.buffer);
+	}
 	TEE_Free(tee_attrs);
 
 	if (res) {

@@ -205,17 +205,9 @@ static uint32_t load_tee_key(struct pkcs11_session *session,
 	uint32_t rv = 0;
 	TEE_Result res = TEE_ERROR_GENERIC;
 
-	TEE_MemFill(&tee_attr, 0, sizeof(tee_attr));
-
 	if (obj->key_handle != TEE_HANDLE_NULL) {
 		/* Key was already loaded and fits current need */
 		goto key_ready;
-	}
-
-	if (!sks2tee_load_attr(&tee_attr, TEE_ATTR_SECRET_VALUE,
-			       obj, SKS_CKA_VALUE)) {
-		EMSG("No secret found");
-		return SKS_FAILED;
 	}
 
 	rv = sks2tee_key_type(&key_type, proc_params, obj);
@@ -233,7 +225,15 @@ static uint32_t load_tee_key(struct pkcs11_session *session,
 		return tee2sks_error(res);
 	}
 
+	TEE_MemFill(&tee_attr, 0, sizeof(tee_attr));
+	if (!sks2tee_load_attr(&tee_attr, TEE_ATTR_SECRET_VALUE,
+			       obj, SKS_CKA_VALUE)) {
+		EMSG("No secret found");
+		res = TEE_ERROR_BAD_PARAMETERS;
+		goto error;
+	}
 	res = TEE_PopulateTransientObject(obj->key_handle, &tee_attr, 1);
+	TEE_Free(tee_attr.content.ref.buffer);
 	if (res) {
 		DMSG("TEE_PopulateTransientObject failed, %" PRIx32, res);
 		goto error;
