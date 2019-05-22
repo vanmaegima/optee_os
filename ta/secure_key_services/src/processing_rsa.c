@@ -365,7 +365,8 @@ uint32_t load_tee_rsa_key_attrs(TEE_Attribute **tee_attrs, size_t *tee_count,
 
 	if (rv != SKS_OK) {
 		for (n = 0; n < count; n++) {
-			if (attrs[n].content.ref.length)
+			if ((attrs[n].attributeID & TEE_ATTR_BIT_VALUE) == 0 &&
+					attrs[n].content.ref.length)
 				TEE_Free(attrs[n].content.ref.buffer);
 		}
 		return rv;

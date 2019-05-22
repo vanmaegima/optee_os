@@ -233,6 +233,7 @@ static uint32_t load_tee_key(struct pkcs11_session *session,
 		goto error;
 	}
 	res = TEE_PopulateTransientObject(obj->key_handle, &tee_attr, 1);
+	/* Known to be a reference attribute */
 	TEE_Free(tee_attr.content.ref.buffer);
 	if (res) {
 		DMSG("TEE_PopulateTransientObject failed, %" PRIx32, res);

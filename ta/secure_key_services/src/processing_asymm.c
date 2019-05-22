@@ -297,7 +297,8 @@ static uint32_t load_tee_key(struct pkcs11_session *session,
 
 	/* Release all ref attribute buffers */
 	for (n = 0; n < tee_attrs_count; n++) {
-		if (tee_attrs[n].content.ref.length)
+		if ((tee_attrs[n].attributeID & TEE_ATTR_BIT_VALUE) == 0 &&
+				tee_attrs[n].content.ref.length)
 			TEE_Free(tee_attrs[n].content.ref.buffer);
 	}
 	TEE_Free(tee_attrs);
