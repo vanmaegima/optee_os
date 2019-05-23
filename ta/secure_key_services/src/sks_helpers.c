@@ -696,6 +696,8 @@ bool sks2tee_load_attr(TEE_Attribute *tee_ref, uint32_t tee_id,
 		}
 
 		buf = TEE_Malloc(data32, TEE_MALLOC_FILL_ZERO);
+		if (!buf)
+			return false;
 		if (tee_id == TEE_ATTR_ECC_PUBLIC_VALUE_X)
 			TEE_MemMove(buf, (uint8_t *)a_ptr + 3, data32);
 		else
@@ -712,6 +714,8 @@ bool sks2tee_load_attr(TEE_Attribute *tee_ref, uint32_t tee_id,
 		return false;
 
 	buf = TEE_Malloc(a_size, TEE_MALLOC_FILL_ZERO);
+	if (!buf)
+		return false;
 	TEE_MemMove(buf, a_ptr, a_size);
 	TEE_InitRefAttribute(tee_ref, tee_id, buf, a_size);
 
