@@ -99,6 +99,7 @@ build:
     - _make PLATFORM=imx-mx7dsabresd
     - _make PLATFORM=imx-mx7dsabresd CFG_NXP_CAAM=y
     - _make PLATFORM=imx-mx7ulpevk
+    - _make PLATFORM=imx-mx7ulpeaucom
     - _make PLATFORM=imx-mx8mmevk
     - _make PLATFORM=imx-mx8mmevk CFG_NXP_CAAM=y
     - _make PLATFORM=imx-mx8mnevk
