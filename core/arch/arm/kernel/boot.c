@@ -77,6 +77,9 @@ DECLARE_KEEP_PAGER(sem_cpu_sync);
 struct dt_descriptor {
 	void *blob;
 	int frag_id;
+#ifdef CFG_OVERLAY_ADDR
+	int is_overlay;
+#endif
 };
 
 static struct dt_descriptor external_dt __nex_bss;
@@ -613,15 +616,21 @@ static TEE_Result release_external_dt(void)
 
 	return TEE_SUCCESS;
 }
+#ifndef CFG_OVERLAY_ADDR
 boot_final(release_external_dt);
+#endif
 
-#ifdef CFG_EXTERNAL_DTB_OVERLAY
+#if defined(CFG_EXTERNAL_DTB_OVERLAY) || defined(CFG_OVERLAY_ADDR)
 static int add_dt_overlay_fragment(struct dt_descriptor *dt, int ioffs)
 {
 	char frag[32];
 	int offs;
 	int ret;
 
+#ifdef CFG_OVERLAY_ADDR
+	if (!dt->is_overlay)
+		return ioffs;
+#endif
 	snprintf(frag, sizeof(frag), "fragment@%d", dt->frag_id);
 	offs = fdt_add_subnode(dt->blob, ioffs, frag);
 	if (offs < 0)
@@ -641,6 +650,10 @@ static int init_dt_overlay(struct dt_descriptor *dt, int __maybe_unused dt_size)
 	int fragment;
 	int ret;
 
+#ifdef CFG_OVERLAY_ADDR
+	return fdt_create_empty_tree(dt->blob, dt_size);
+#endif
+
 	ret = fdt_check_header(dt->blob);
 	if (!ret) {
 		fdt_for_each_subnode(fragment, dt->blob, 0)
@@ -655,6 +668,7 @@ static int init_dt_overlay(struct dt_descriptor *dt, int __maybe_unused dt_size)
 #endif
 }
 #else
+
 static int add_dt_overlay_fragment(struct dt_descriptor *dt __unused, int offs)
 {
 	return offs;
@@ -665,7 +679,7 @@ static int init_dt_overlay(struct dt_descriptor *dt __unused,
 {
 	return 0;
 }
-#endif /* CFG_EXTERNAL_DTB_OVERLAY */
+#endif /* CFG_EXTERNAL_DTB_OVERLAY || CFG_OVERLAY_ADDR */
 
 static int add_dt_path_subnode(struct dt_descriptor *dt, const char *path,
 			       const char *subnode)
@@ -1015,6 +1029,9 @@ static void init_external_dt(unsigned long phys_dt)
 
 	dt->blob = fdt;
 
+#ifdef CFG_OVERLAY_ADDR
+	if (dt->is_overlay) {
+#endif
 	ret = init_dt_overlay(dt, CFG_DTB_MAX_SIZE);
 	if (ret < 0) {
 		EMSG("Device Tree Overlay init fail @ %#lx: error %d", phys_dt,
@@ -1022,6 +1039,9 @@ static void init_external_dt(unsigned long phys_dt)
 		panic();
 	}
 
+#ifdef CFG_OVERLAY_ADDR
+	}
+#endif
 	ret = fdt_open_into(fdt, fdt, CFG_DTB_MAX_SIZE);
 	if (ret < 0) {
 		EMSG("Invalid Device Tree at %#lx: error %d", phys_dt, ret);
@@ -1175,6 +1195,10 @@ static void init_primary(unsigned long pageable_part, unsigned long nsec_entry)
  */
 void __weak paged_init_primary(unsigned long fdt)
 {
+#ifdef CFG_OVERLAY_ADDR
+	struct dt_descriptor *dt = &external_dt;
+	dt->is_overlay = 0;
+#endif
 	init_external_dt(fdt);
 	tpm_map_log_area(get_external_dt());
 	discover_nsec_memory();
@@ -1182,6 +1206,7 @@ void __weak paged_init_primary(unsigned long fdt)
 	configure_console_from_dt();
 
 	IMSG("OP-TEE version: %s", core_v_str);
+
 	IMSG("Primary CPU initializing");
 #ifdef CFG_CORE_ASLR
 	DMSG("Executing at offset %#lx with virtual load address %#"PRIxVA,
@@ -1193,6 +1218,16 @@ void __weak paged_init_primary(unsigned long fdt)
 #ifndef CFG_VIRTUALIZATION
 	init_tee_runtime();
 #endif
+
+#ifdef CFG_OVERLAY_ADDR
+	release_external_dt();
+	dt->is_overlay = 1;
+	init_external_dt(CFG_OVERLAY_ADDR);
+	discover_nsec_memory();
+	update_external_dt();
+	release_external_dt();
+#endif
+
 #ifdef CFG_VIRTUALIZATION
 	IMSG("Initializing virtualization support");
 	core_mmu_init_virtualization();
