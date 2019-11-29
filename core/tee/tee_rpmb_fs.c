@@ -1112,7 +1112,7 @@ static TEE_Result tee_rpmb_init(uint16_t dev_id)
 
 		res = tee_rpmb_verify_key_sync_counter(dev_id);
 		if (res == TEE_ERROR_ITEM_NOT_FOUND &&
-			!rpmb_ctx->key_verified) {
+			!rpmb_ctx->key_verified && plat_rpmb_ready()) {
 			/*
 			 * Need to write the key here and verify it.
 			 */
@@ -2609,4 +2609,9 @@ TEE_Result tee_rpmb_fs_raw_open(const char *fname, bool create,
 	}
 
 	return res;
+}
+
+bool __weak plat_rpmb_ready(void)
+{
+	return true;
 }
