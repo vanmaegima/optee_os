@@ -348,6 +348,12 @@ endif
 endif
 endif
 
+# Default reserved memory address and size cell values: when OP-TEE generates a
+# new overlay without some reference to a reserved-memory node, the user can
+# configure the required address/size cell property values
+CFG_OVERLAY_RESERVED_MEMORY_ADDRESS_CELLS ?= 2
+CFG_OVERLAY_RESERVED_MEMORY_SIZE_CELLS ?= 2
+
 # Enable core self tests and related pseudo TAs
 CFG_TEE_CORE_EMBED_INTERNAL_TESTS ?= y
 
