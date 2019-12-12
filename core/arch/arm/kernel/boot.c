@@ -854,6 +854,8 @@ static int add_res_mem_dt_node(struct dt_descriptor *dt, const char *name,
 	int len_size = -1;
 	bool found = true;
 	char subnode_name[80] = { 0 };
+	const fdt32_t *c;
+	int len;
 
 	offs = fdt_path_offset(dt->blob, "/reserved-memory");
 
@@ -862,13 +864,19 @@ static int add_res_mem_dt_node(struct dt_descriptor *dt, const char *name,
 		offs = 0;
 	}
 
-	if (IS_ENABLED(CFG_EXTERNAL_DTB_OVERLAY)) {
-		len_size = sizeof(paddr_t) / sizeof(uint32_t);
-		addr_size = sizeof(paddr_t) / sizeof(uint32_t);
+	c = fdt_getprop(dt->blob, offs, "#size-cells", &len);
+	if (!c) {
+		len_size = CFG_OVERLAY_RESERVED_MEMORY_SIZE_CELLS;
 	} else {
 		len_size = fdt_size_cells(dt->blob, offs);
 		if (len_size < 0)
 			return -1;
+	}
+
+	c = fdt_getprop(dt->blob, offs, "#address-cells", &len);
+	if (!c) {
+		addr_size = CFG_OVERLAY_RESERVED_MEMORY_ADDRESS_CELLS;
+	} else {
 		addr_size = fdt_address_cells(dt->blob, offs);
 		if (addr_size < 0)
 			return -1;
