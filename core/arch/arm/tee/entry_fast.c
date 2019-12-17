@@ -64,6 +64,8 @@ static void tee_entry_exchange_capabilities(struct thread_smc_args *args)
 {
 	bool dyn_shm_en = false;
 
+	(void) dyn_shm_en;
+
 	/*
 	 * Currently we ignore OPTEE_SMC_NSEC_CAP_UNIPROCESSOR.
 	 *
