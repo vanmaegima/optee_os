@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BSD-2-Clause
 /*
  * Copyright (C) 2016 Freescale Semiconductor, Inc.
+ * Copyright 2019-2020 NXP
  *
  * Peng Fan <peng.fan@nxp.com>
  */
@@ -15,6 +16,7 @@
 #include <kernel/boot.h>
 #include <kernel/misc.h>
 #include <kernel/panic.h>
+#include <kernel/pm.h>
 #include <mm/core_mmu.h>
 #include <mm/core_memprot.h>
 #include <platform_config.h>
@@ -213,6 +215,7 @@ int psci_cpu_suspend(uint32_t power_state,
 {
 	uint32_t id, type;
 	int ret = PSCI_RET_INVALID_PARAMETERS;
+	TEE_Result retstatus;
 
 	id = power_state & PSCI_POWER_STATE_ID_MASK;
 	type = (power_state & PSCI_POWER_STATE_TYPE_MASK) >>
@@ -231,25 +234,48 @@ int psci_cpu_suspend(uint32_t power_state,
 	 */
 	DMSG("ID = %d\n", id);
 	if (id == 1) {
+		retstatus = pm_change_state(PM_OP_SUSPEND, PM_HINT_CLOCK_STATE);
+		if (retstatus != TEE_SUCCESS) {
+			EMSG("Drivers idle preparation ret 0x%" PRIx32,
+			     retstatus);
+			pm_change_state(PM_OP_RESUME, PM_HINT_CLOCK_STATE);
+			return PSCI_RET_DENIED;
+		}
+
 		if (soc_is_imx7ds())
-			return imx7d_lowpower_idle(power_state, entry,
+			ret = imx7d_lowpower_idle(power_state, entry,
 						   context_id, nsec);
 		else if (soc_is_imx7ulp()) {
 			imx7ulp_lowpower_idle();
+		} else {
+			EMSG("Not supported now\n");
+			ret = PSCI_RET_INVALID_PARAMETERS;
 		}
-		return ret;
+		pm_change_state(PM_OP_RESUME, PM_HINT_CLOCK_STATE);
 	} else if (id == 0) {
+		retstatus =
+			pm_change_state(PM_OP_SUSPEND, PM_HINT_CONTEXT_STATE);
+		if (retstatus != TEE_SUCCESS) {
+			EMSG("Drivers suspend preparation ret 0x%" PRIx32 "",
+			     retstatus);
+			pm_change_state(PM_OP_RESUME, PM_HINT_CONTEXT_STATE);
+			return PSCI_RET_DENIED;
+		}
+
 		if (soc_is_imx7ds()) {
-			return imx7_cpu_suspend(power_state, entry,
+			ret = imx7_cpu_suspend(power_state, entry,
 						context_id, nsec);
 		} else if (soc_is_imx7ulp()) {
-			return imx7ulp_cpu_suspend(power_state, entry,
+			ret = imx7ulp_cpu_suspend(power_state, entry,
 						context_id, nsec);
+		} else {
+			EMSG("Not supported now\n");
+			ret = PSCI_RET_INVALID_PARAMETERS;
 		}
-		return ret;
+		pm_change_state(PM_OP_RESUME, PM_HINT_CONTEXT_STATE);
+	} else {
+		DMSG("ID %d not supported\n", id);
 	}
-
-	DMSG("ID %d not supported\n", id);
 
 	return ret;
 }
