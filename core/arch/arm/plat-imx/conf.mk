@@ -56,7 +56,7 @@ mx7s-flavorlist = \
 
 mx7ulp-flavorlist = \
 	mx7ulpevk \
-	mx7ulpeaucom
+	mx7ulpeaucom \
 
 mx8mq-flavorlist = \
 	mx8mqevk
