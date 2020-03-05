@@ -67,7 +67,9 @@ static const struct thread_handlers handlers = {
 #endif
 };
 
+#ifdef CONSOLE_UART_BASE
 static struct imx_uart_data console_data;
+#endif
 
 #ifdef CONSOLE_UART_BASE
 register_phys_mem_pgdir(MEM_AREA_IO_NSEC, CONSOLE_UART_BASE,
