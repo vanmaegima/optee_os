@@ -339,7 +339,7 @@ endif
 ifeq ($(filter y, $(CFG_MX7ULP)), y)
 CFG_INIT_CNTVOFF ?= y
 CFG_DRAM_BASE ?= 0x80000000
-$(call force,CFG_IMX_LPUART,y)
+CFG_IMX_LPUART ?= y
 $(call force,CFG_BOOT_SECONDARY_REQUEST,n)
 endif
 
