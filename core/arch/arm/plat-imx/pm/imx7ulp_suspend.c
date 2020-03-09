@@ -73,6 +73,7 @@ static vaddr_t pmc1_base;
 #define PMC_VLLS		0x1c
 #define PMC_STATUS		0x20
 #define PMC_CTRL		0x24
+#define PMC0_CTRL		0x28
 #define PMC_SRAMCTRL_0		0x28
 #define PMC_SRAMCTRL_1		0x2c
 #define PMC_SRAMCTRL_2		0x30
@@ -214,7 +215,7 @@ static int imx7ulp_set_lpm(enum imx7ulp_sys_pwr_mode mode)
 {
 	uint32_t val1 = BM_PMPROT_AHSRUN | BM_PMPROT_AVLP | BM_PMPROT_AVLLS;
 	uint32_t val2 = io_read32(smc1_base + PMCTRL);
-	uint32_t val3 = io_read32(pmc0_base + PMC_CTRL);
+	uint32_t val3 = io_read32(pmc0_base + PMC0_CTRL);
 
 	val2 &= ~(BM_PMCTRL_RUNM |
 		BM_PMCTRL_STOPM | BM_PMCTRL_PSTOPO);
@@ -245,7 +246,7 @@ static int imx7ulp_set_lpm(enum imx7ulp_sys_pwr_mode mode)
 
 	io_write32(smc1_base + PMPROT, val1);
 	io_write32(smc1_base + PMCTRL, val2);
-	io_write32(pmc0_base + PMC_CTRL, val3);
+	io_write32(pmc0_base + PMC0_CTRL, val3);
 
 	return 0;
 }
