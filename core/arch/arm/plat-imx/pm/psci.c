@@ -200,6 +200,11 @@ __weak int imx7ulp_cpu_suspend(uint32_t power_state __unused,
 	return 0;
 }
 
+__weak void imx7ulp_lowpower_idle(void)
+{
+	psci_system_off();
+}
+
 int psci_cpu_suspend(uint32_t power_state,
 		     uintptr_t entry, uint32_t context_id __unused,
 		     struct sm_nsec_ctx *nsec)
@@ -227,6 +232,9 @@ int psci_cpu_suspend(uint32_t power_state,
 		if (soc_is_imx7ds())
 			return imx7d_lowpower_idle(power_state, entry,
 						   context_id, nsec);
+		else if (soc_is_imx7ulp()) {
+			imx7ulp_lowpower_idle();
+		}
 		return ret;
 	} else if (id == 0) {
 		if (soc_is_imx7ds()) {
