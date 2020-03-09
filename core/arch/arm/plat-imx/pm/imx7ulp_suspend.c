@@ -251,29 +251,63 @@ static int imx7ulp_set_lpm(enum imx7ulp_sys_pwr_mode mode)
 	return 0;
 }
 
+void imx7ulp_lowpower_idle(void)
+{
+	uint32_t i, suspend_ocram_base;
+	struct imx7ulp_pm_info *p;
+
+	DMSG("%s\n", __func__);
+	if (!suspended_init) {
+		imx7ulp_suspend_init();
+		for (i = 0; i < ARRAY_SIZE(gpio_base); i++) {
+			gpio_base[i] = core_mmu_get_va(GPIOC_BASE + i * 0x40,
+						       MEM_AREA_IO_SEC);
+		}
+
+		scg1_base = core_mmu_get_va(SCG1_BASE, MEM_AREA_IO_SEC);
+		pcc2_base = core_mmu_get_va(PCC2_BASE, MEM_AREA_IO_SEC);
+		pcc3_base = core_mmu_get_va(PCC3_BASE, MEM_AREA_IO_SEC);
+		iomuxc1_base = core_mmu_get_va(IOMUXC1_BASE, MEM_AREA_IO_SEC);
+		tpm5_base = core_mmu_get_va(TPM5_BASE, MEM_AREA_IO_SEC);
+		pmc0_base = core_mmu_get_va(PMC0_BASE, MEM_AREA_IO_SEC);
+		pmc1_base = core_mmu_get_va(PMC1_BASE, MEM_AREA_IO_SEC);
+		smc1_base = core_mmu_get_va(SMC1_BASE, MEM_AREA_IO_SEC);
+		suspended_init = 1;
+	}
+
+	suspend_ocram_base = core_mmu_get_va(LP_OCRAM_START +
+					      SUSPEND_OCRAM_OFFSET,
+					      MEM_AREA_TEE_COHERENT);
+	p = (struct imx7ulp_pm_info *) suspend_ocram_base;
+
+	/* re-init the gic to avoid being woken up during entry, this is the
+	   land of no-return */
+	main_init_gic();
+
+	imx7ulp_set_lpm(VLLS);
+	sm_pm_cpu_suspend((uint32_t)p, (int (*)(uint32_t))
+		         (suspend_ocram_base + sizeof(*p)));
+}
+
 int imx7ulp_cpu_suspend(uint32_t power_state __unused, uintptr_t entry,
 			uint32_t context_id __unused, struct sm_nsec_ctx *nsec)
 {
-	uint32_t i;
+	uint32_t suspend_ocram_base;
+	struct imx7ulp_pm_info *p;
+	uint32_t type, i;
 	int ret;
-
-	if (!suspended_init)
-		imx7ulp_suspend_init();
-	/*
-	 * TODO: move the code to a platform init place, note that
-	 * need to change kernel pm-imx6.c to avoid use LPRAM.
-	 */
-	uint32_t suspend_ocram_base = core_mmu_get_va(LP_OCRAM_START +
-						      SUSPEND_OCRAM_OFFSET,
-						      MEM_AREA_TEE_COHERENT);
-	struct imx7ulp_pm_info *p =
-			(struct imx7ulp_pm_info *)suspend_ocram_base;
-	uint32_t type;
 
 	type = (power_state & PSCI_POWER_STATE_TYPE_MASK) >>
 		PSCI_POWER_STATE_TYPE_SHIFT;
 
+	suspend_ocram_base = core_mmu_get_va(LP_OCRAM_START +
+				              SUSPEND_OCRAM_OFFSET,
+					      MEM_AREA_TEE_COHERENT);
+	p = (struct imx7ulp_pm_info *) suspend_ocram_base;
+
 	if (!suspended_init) {
+		imx7ulp_suspend_init();
+
 		for (i = 0; i < ARRAY_SIZE(gpio_base); i++) {
 			gpio_base[i] = core_mmu_get_va(GPIOC_BASE + i * 0x40,
 						       MEM_AREA_IO_SEC);
@@ -300,11 +334,9 @@ int imx7ulp_cpu_suspend(uint32_t power_state __unused, uintptr_t entry,
 		imx7ulp_tpm_save(p);
 		imx7ulp_iomuxc_save(p);
 		imx7ulp_set_lpm(VLLS);
-
-		DMSG("%s POWER_DOWN - VLLS [done]\n", __func__);
+		DMSG("%s suspend \n", __func__);
 		ret = sm_pm_cpu_suspend((uint32_t)p, (int (*)(uint32_t))
 					(suspend_ocram_base + sizeof(*p)));
-
 		imx7ulp_pcc2_restore(p);
 		imx7ulp_pcc3_restore(p);
 		imx7ulp_set_dgo(p, 0);
@@ -314,11 +346,9 @@ int imx7ulp_cpu_suspend(uint32_t power_state __unused, uintptr_t entry,
 		imx7ulp_set_lpm(VLPS);
 		io_write32(pmc1_base + PMC_VLPS,
 			io_read32(pmc1_base + PMC_VLPS) | BM_VLPS_RBBEN);
-
-		DMSG("%s STANDBY - VLPS \n", __func__);
+		DMSG("%s standby\n", __func__);
 		ret = sm_pm_cpu_suspend((uint32_t)p, (int (*)(uint32_t))
 					(suspend_ocram_base + sizeof(*p)));
-
 		io_write32(pmc1_base + PMC_VLPS,
 			io_read32(pmc1_base + PMC_VLPS) & ~BM_VLPS_RBBEN);
 		imx7ulp_set_lpm(RUN);

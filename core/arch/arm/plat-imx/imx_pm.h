@@ -134,6 +134,7 @@ void v7_cpu_resume(void);
 
 int imx7ulp_cpu_suspend(uint32_t power_state, uintptr_t entry,
  			uint32_t context_id, struct sm_nsec_ctx *nsec);
+void imx7ulp_lowpower_idle(void);
 void imx7ulp_suspend(struct imx7ulp_pm_info *info);
 int imx7ulp_suspend_init(void);
 void imx7ulp_cpu_resume(void);
