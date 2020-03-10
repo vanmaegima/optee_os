@@ -11,6 +11,7 @@
 #include <kernel/generic_boot.h>
 #include <kernel/misc.h>
 #include <kernel/panic.h>
+#include <kernel/interrupt.h>
 #include <kernel/pm_stubs.h>
 #include <kernel/cache_helpers.h>
 #include <mm/core_mmu.h>
@@ -251,6 +252,27 @@ static int imx7ulp_set_lpm(enum imx7ulp_sys_pwr_mode mode)
 	return 0;
 }
 
+static enum itr_return nmi_itr_cb(__attribute__((unused)) struct itr_handler *h)
+{
+	return ITRR_HANDLED;
+}
+KEEP_PAGER(nmi_itr_cb);
+
+static struct itr_handler itr;
+
+static void imx7ulp_register_nmi_handler(void)
+{
+	const size_t SPI_NMI_IRQ = 122;
+
+	itr.it = SPI_NMI_IRQ;
+	itr.handler = nmi_itr_cb;
+
+	/* register a secure NMI to allow the reboot */
+	itr_add(&itr);
+	itr_enable(itr.it);
+	itr_set_affinity(SPI_NMI_IRQ, 1);
+}
+
 void imx7ulp_lowpower_idle(void)
 {
 	uint32_t i, suspend_ocram_base;
@@ -281,8 +303,11 @@ void imx7ulp_lowpower_idle(void)
 	p = (struct imx7ulp_pm_info *) suspend_ocram_base;
 
 	/* re-init the gic to avoid being woken up during entry, this is the
-	   land of no-return */
+	   land of no-return (except for NMI) */
 	main_init_gic();
+
+	/* enable the wakup source */
+	imx7ulp_register_nmi_handler();
 
 	imx7ulp_set_lpm(VLLS);
 	sm_pm_cpu_suspend((uint32_t)p, (int (*)(uint32_t))
