@@ -349,6 +349,9 @@ $(call force,CFG_GENERIC_BOOT,y)
 $(call force,CFG_GIC,y)
 $(call force,CFG_PM_STUBS,y)
 
+ifeq ($(CFG_RPMB_FS),y)
+CFG_IMX_SNVS ?= y
+endif
 CFG_BOOT_SYNC_CPU ?= n
 CFG_BOOT_SECONDARY_REQUEST ?= y
 CFG_DT ?= y
@@ -360,9 +363,6 @@ endif
 
 ifneq (,$(filter y, $(CFG_MX6) $(CFG_MX7)))
 $(call force,CFG_IMX_UART,y)
-ifeq ($(CFG_RPMB_FS),y)
-CFG_IMX_SNVS ?= y
-endif
 CFG_CSU ?= y
 endif
 
