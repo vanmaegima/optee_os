@@ -362,6 +362,9 @@ endif
 ifneq (,$(filter y, $(CFG_MX6) $(CFG_MX7) $(CFG_MX7ULP)))
 $(call force,CFG_GIC,y)
 
+ifeq ($(CFG_RPMB_FS),y)
+CFG_IMX_SNVS ?= y
+endif
 CFG_BOOT_SECONDARY_REQUEST ?= y
 CFG_DT ?= y
 CFG_PAGEABLE_ADDR ?= 0
@@ -372,9 +375,6 @@ endif
 
 ifneq (,$(filter y, $(CFG_MX6) $(CFG_MX7)))
 $(call force,CFG_IMX_UART,y)
-ifeq ($(CFG_RPMB_FS),y)
-CFG_IMX_SNVS ?= y
-endif
 CFG_CSU ?= y
 endif
 
