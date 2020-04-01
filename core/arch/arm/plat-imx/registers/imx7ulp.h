@@ -37,6 +37,7 @@
 #define IOMUXC1_BASE		0x40ac0000
 #define MMDC_IO_BASE		0x40ad0000
 #define PCC3_BASE		0x40b30000
+#define SNVS_BASE		0x41070000
 #define PMC0_BASE		0x410a1000
 #define SIM_BASE		0x410a3000
 
