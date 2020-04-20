@@ -17,6 +17,11 @@
  * The default implementation just sets it to a constant.
  */
 
+__weak TEE_Result tee_otp_enable_test_hw_unique_key(void)
+{
+	return TEE_ERROR_SECURITY;
+}
+
 __weak TEE_Result tee_otp_get_hw_unique_key(struct tee_hw_unique_key *hwkey)
 {
 	memset(&hwkey->data[0], 0, sizeof(hwkey->data));
