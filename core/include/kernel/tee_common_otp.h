@@ -16,6 +16,7 @@ struct tee_hw_unique_key {
 };
 
 TEE_Result tee_otp_get_hw_unique_key(struct tee_hw_unique_key *hwkey);
+TEE_Result tee_otp_enable_test_hw_unique_key(void);
 int tee_otp_get_die_id(uint8_t *buffer, size_t len);
 
 #endif /* TEE_COMMON_OTP_H */
