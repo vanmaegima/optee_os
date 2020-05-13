@@ -162,6 +162,21 @@ typedef struct {
 	uint32_t millis;
 } TEE_Time;
 
+/* I2C Api API */
+
+enum TEE_I2CMode {
+	TEE_MODE_READ = 0,
+	TEE_MODE_WRITE = 1,
+};
+
+struct TEE_I2CRequest {
+	enum TEE_I2CMode mode;
+	uint8_t bus;
+	uint8_t chip;
+	uint8_t *buffer;
+	size_t bufferLen;
+};
+
 /* TEE Arithmetical APIs */
 
 typedef uint32_t TEE_BigInt;
