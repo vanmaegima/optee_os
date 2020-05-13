@@ -107,8 +107,7 @@
  */
 #define OPTEE_RPC_CMD_SHM_FREE		7
 
-/* Was OPTEE_RPC_CMD_SQL_FS, which isn't supported any longer */
-#define OPTEE_RPC_CMD_SQL_FS_RESERVED	8
+#define OPTEE_MSG_RPC_CMD_I2C_TRANSFER	8
 
 /*
  * Send TA profiling information to normal world
