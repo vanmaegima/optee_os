@@ -145,7 +145,7 @@ static TEE_Result ecc_get_curve_info(uint32_t curve, uint32_t algo,
 		*curve_name = name;
 	return TEE_SUCCESS;
 }
-
+#if !defined(CFG_CORE_SE05X)
 TEE_Result crypto_acipher_gen_ecc_key(struct ecc_keypair *key)
 {
 	TEE_Result res;
@@ -190,6 +190,7 @@ exit:
 	ecc_free(&ltc_tmp_key);		/* Free the temporary key */
 	return res;
 }
+#endif
 
 /* Note: this function clears the key before setting the curve */
 static TEE_Result ecc_set_curve_from_name(ecc_key *ltc_key,
@@ -270,6 +271,8 @@ TEE_Result ecc_populate_ltc_public_key(ecc_key *ltc_key,
 	return TEE_SUCCESS;
 }
 
+#if !defined(CFG_CORE_SE05X)
+
 TEE_Result crypto_acipher_ecc_sign(uint32_t algo, struct ecc_keypair *key,
 				   const uint8_t *msg, size_t msg_len,
 				   uint8_t *sig, size_t *sig_len)
@@ -309,6 +312,7 @@ out:
 	return res;
 }
 
+
 TEE_Result crypto_acipher_ecc_verify(uint32_t algo, struct ecc_public_key *key,
 				     const uint8_t *msg, size_t msg_len,
 				     const uint8_t *sig, size_t sig_len)
@@ -339,6 +343,8 @@ out:
 	ecc_free(&ltc_key);
 	return res;
 }
+
+#endif
 
 TEE_Result crypto_acipher_ecc_shared_secret(struct ecc_keypair *private_key,
 					    struct ecc_public_key *public_key,
