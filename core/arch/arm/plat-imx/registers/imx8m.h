@@ -15,12 +15,41 @@
 #define TZASC_BASE	0x32F80000
 #define CAAM_BASE	0x30900000
 #define ANATOP_BASE	0x30360000
+#define IOMUXC_BASE	0x30330000
 
 #ifdef CFG_IMX8MQ
 #define DIGPROG_OFFSET	0x06c
 #endif
 #if defined(CFG_IMX8MM) || defined(CFG_IMX8MN)
 #define DIGPROG_OFFSET	0x800
+#endif
+
+#if defined(CFG_IMX8MM)
+#define I2C_CLK_RATE		24000000
+
+#define I2C1_BASE_ADDR		0x30a20000
+#define I2C2_BASE_ADDR		0x30a30000
+#define I2C3_BASE_ADDR		0x30a40000
+
+#define IOMUXC_I2C1_SCL_CFG	0x47C
+#define IOMUXC_I2C1_SDA_CFG	0x480
+#define I2C_CFG_SCL(__x)	(IOMUXC_I2C1_SCL_CFG + ((__x) - 1) * 0x8)
+#define I2C_CFG_SDA(__x)	(IOMUXC_I2C1_SDA_CFG + ((__x) - 1) * 0x8)
+
+#define IOMUXC_I2C1_SCL_MUX	0x214
+#define IOMUXC_I2C1_SDA_MUX	0x218
+#define I2C_MUX_SCL(__x)	(IOMUXC_I2C1_SCL_MUX + ((__x) - 1) * 0x8)
+#define I2C_MUX_SDA(__x)	(IOMUXC_I2C1_SDA_MUX + ((__x) - 1) * 0x8)
+
+#define IOMUXC_I2C_MUX_VAL	0x010
+#define IOMUXC_I2C_CFG_VAL	0x1c3
+#define I2C_MUX_VAL(__x)	IOMUXC_I2C_MUX_VAL
+#define I2C_CFG_VAL(__x)	IOMUXC_I2C_CFG_VAL
+
+#define CCM_CCRG_I2C1		23
+#define CCM_CCRG_I2C2		24
+#define CCM_CCRG_I2C3		25
+#define I2C_CLK_CGR(__x)	CCM_CCRG_I2C##__x
 #endif
 
 #endif /* __IMX8M_H__ */
