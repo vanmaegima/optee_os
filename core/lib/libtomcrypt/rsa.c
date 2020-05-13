@@ -15,7 +15,7 @@
 
 #include "acipher_helpers.h"
 
-
+#if !defined(CFG_CORE_SE05X)
 /*
  * Compute the LibTomCrypt "hashindex" given a TEE Algorithm "algo"
  * Return
@@ -82,6 +82,7 @@ static TEE_Result tee_algo_to_ltc_hashindex(uint32_t algo, int *ltc_hashindex)
 	else
 		return TEE_SUCCESS;
 }
+#endif
 
 TEE_Result crypto_acipher_alloc_rsa_keypair(struct rsa_keypair *s,
 					    size_t key_size_bits __unused)
@@ -139,6 +140,7 @@ void crypto_acipher_free_rsa_public_key(struct rsa_public_key *s)
 	crypto_bignum_free(s->e);
 }
 
+#if !defined(CFG_CORE_SE05X)
 TEE_Result crypto_acipher_gen_rsa_key(struct rsa_keypair *key, size_t key_size)
 {
 	TEE_Result res;
@@ -590,3 +592,5 @@ TEE_Result crypto_acipher_rsassa_verify(uint32_t algo,
 err:
 	return res;
 }
+
+#endif

@@ -124,7 +124,7 @@ static TEE_Result ecc_get_keysize(uint32_t curve, uint32_t algo,
 
 	return TEE_SUCCESS;
 }
-
+#if !defined(CFG_CORE_SE05X)
 TEE_Result crypto_acipher_gen_ecc_key(struct ecc_keypair *key)
 {
 	TEE_Result res;
@@ -168,7 +168,7 @@ exit:
 	ecc_free(&ltc_tmp_key);		/* Free the temporary key */
 	return res;
 }
-
+#endif
 static TEE_Result ecc_compute_key_idx(ecc_key *ltc_key, size_t keysize)
 {
 	size_t x;
@@ -244,6 +244,8 @@ static TEE_Result ecc_populate_ltc_public_key(ecc_key *ltc_key,
 	return ecc_compute_key_idx(ltc_key, *key_size_bytes);
 }
 
+#if !defined(CFG_CORE_SE05X)
+
 TEE_Result crypto_acipher_ecc_sign(uint32_t algo, struct ecc_keypair *key,
 				   const uint8_t *msg, size_t msg_len,
 				   uint8_t *sig, size_t *sig_len)
@@ -297,6 +299,7 @@ err:
 	return res;
 }
 
+
 TEE_Result crypto_acipher_ecc_verify(uint32_t algo, struct ecc_public_key *key,
 				     const uint8_t *msg, size_t msg_len,
 				     const uint8_t *sig, size_t sig_len)
@@ -337,6 +340,8 @@ out:
 	mp_clear_multi(key_z, r, s, NULL);
 	return res;
 }
+
+#endif
 
 TEE_Result crypto_acipher_ecc_shared_secret(struct ecc_keypair *private_key,
 					    struct ecc_public_key *public_key,

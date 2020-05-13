@@ -118,7 +118,7 @@ static TEE_Result ltc_ecb_alloc_ctx(struct crypto_cipher_ctx **ctx_ret,
 	return TEE_SUCCESS;
 }
 
-#if defined(_CFG_CORE_LTC_AES)
+#if defined(_CFG_CORE_LTC_AES) && !defined(CFG_CORE_SE05X)
 TEE_Result crypto_aes_ecb_alloc_ctx(struct crypto_cipher_ctx **ctx)
 {
 	return ltc_ecb_alloc_ctx(ctx, find_cipher("aes"), false);
@@ -126,11 +126,12 @@ TEE_Result crypto_aes_ecb_alloc_ctx(struct crypto_cipher_ctx **ctx)
 #endif
 
 #if defined(_CFG_CORE_LTC_DES)
+#if !defined(CFG_CORE_SE05X)
 TEE_Result crypto_des_ecb_alloc_ctx(struct crypto_cipher_ctx **ctx)
 {
 	return ltc_ecb_alloc_ctx(ctx, find_cipher("des"), false);
 }
-
+#endif
 TEE_Result crypto_des3_ecb_alloc_ctx(struct crypto_cipher_ctx **ctx)
 {
 	return ltc_ecb_alloc_ctx(ctx, find_cipher("3des"), true);
