@@ -1,5 +1,7 @@
 cflags-y += -Wno-error
 cflags-y += -Wno-implicit-function-declaration
+cflags-y += -Wno-suggest-attribute=format
+cflags-y += -Wno-unused-result
 
 cflags-y += -DAX_EMBEDDED=1
 cflags-y += -DVERBOSE_APDU_LOGS=0

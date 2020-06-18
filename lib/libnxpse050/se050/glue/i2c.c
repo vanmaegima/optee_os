@@ -4,6 +4,7 @@
  * Author: Jorge Ramirez <jorge@foundries.io>
  */
 
+#include <compiler.h>
 #include <drivers/imx_i2c.h>
 #include <initcall.h>
 #include <kernel/tee_i2c.h>
@@ -48,21 +49,21 @@ static int i2c_transfer(uint8_t *buffer, int len, enum TEE_I2CMode mode)
 	return -1;
 }
 
-void phPalEse_i2c_close(void *handle)
+void phPalEse_i2c_close(void *handle __unused)
 {
 }
 
-int phPalEse_i2c_read(void *foo, uint8_t *buffer, int len)
+int phPalEse_i2c_read(void *foo __unused, uint8_t *buffer, int len)
 {
 	return i2c_transfer(buffer, len, TEE_MODE_READ);
 }
 
-int phPalEse_i2c_write(void *foo, uint8_t *buffer, int len)
+int phPalEse_i2c_write(void *foo __unused, uint8_t *buffer, int len)
 {
 	return i2c_transfer(buffer, len, TEE_MODE_WRITE);
 }
 
-ESESTATUS phPalEse_i2c_open_and_configure(pphPalEse_Config_t pConfig)
+ESESTATUS phPalEse_i2c_open_and_configure(pphPalEse_Config_t pConfig __unused)
 {
 	TEE_Result ret = TEE_ERROR_GENERIC;
 
@@ -84,6 +85,8 @@ static TEE_Result load_trampoline(void)
 {
 	/* switch to the trampoline driver on OP-TEE boot done */
 	transfer = &tee_i2c_transfer;
+
+	return TEE_SUCCESS;
 }
 
 driver_init_late(load_trampoline);
