@@ -7,71 +7,82 @@
  * all the files in the se05 middleware
  */
 
-#include <fsl_sss_api.h>
+#include <stubs.h>
 
-sss_status_t sss_digest_context_init(sss_digest_t *context,
-				     sss_session_t *session,
-				     sss_algorithm_t algorithm, sss_mode_t mode)
+sss_status_t sss_digest_context_init(sss_digest_t *context __unused,
+				     sss_session_t *session __unused,
+				     sss_algorithm_t algorithm __unused,
+				     sss_mode_t mode __unused)
 {
 	return kStatus_SSS_Fail;
 }
 
-sss_status_t sss_digest_one_go(sss_digest_t *context, const uint8_t *message,
-			       size_t messageLen, uint8_t *digest,
-			       size_t *digestLen)
+sss_status_t sss_digest_one_go(sss_digest_t *context __unused,
+			       const uint8_t *message __unused,
+			       size_t mlen __unused,
+			       uint8_t *digest __unused,
+			       size_t *dlen __unused)
 {
 	return kStatus_SSS_Fail;
 }
 
-sss_status_t sss_digest_init(sss_digest_t *context)
+sss_status_t sss_digest_init(sss_digest_t *context __unused)
 {
 	return kStatus_SSS_Fail;
 }
 
-sss_status_t sss_digest_update(sss_digest_t *context, const uint8_t *message,
-			       size_t messageLen)
+sss_status_t sss_digest_update(sss_digest_t *context __unused,
+			       const uint8_t *message __unused,
+			       size_t len __unused)
 {
 	return kStatus_SSS_Fail;
 }
 
-sss_status_t sss_digest_finish(sss_digest_t *context, uint8_t *digest,
-			       size_t *digestLen)
+sss_status_t sss_digest_finish(sss_digest_t *context __unused,
+			       uint8_t *digest __unused,
+			       size_t *len __unused)
 {
 	return kStatus_SSS_Fail;
 }
 
-void sss_digest_context_free(sss_digest_t *context)
+void sss_digest_context_free(sss_digest_t *context __unused)
 {
 }
 
-sss_status_t sss_key_store_set_key(sss_key_store_t *keyStore,
-				   sss_object_t *keyObject, const uint8_t *data,
-				   size_t dataLen, size_t keyBitLen,
-				   void *options, size_t optionsLen)
-{
-	return kStatus_SSS_Fail;
-}
-
-sss_status_t sss_key_store_get_key(sss_key_store_t *keyStore,
-				   sss_object_t *keyObject, uint8_t *data,
-				   size_t *dataLen, size_t *pKeyBitLen)
+sss_status_t sss_key_store_set_key(sss_key_store_t *keyStore __unused,
+				   sss_object_t *keyObject __unused,
+				   const uint8_t *data __unused,
+				   size_t dlen __unused,
+				   size_t bit_len __unused,
+				   void *options __unused,
+				   size_t olen __unused)
 {
 	return kStatus_SSS_Fail;
 }
 
-sss_status_t sss_rng_context_init(sss_rng_context_t *context,
-				  sss_session_t *session)
+sss_status_t sss_key_store_get_key(sss_key_store_t *key_store __unused,
+				   sss_object_t *key_object __unused,
+				   uint8_t *data __unused,
+				   size_t *dlen __unused,
+				   size_t *bit_len __unused)
 {
 	return kStatus_SSS_Fail;
 }
 
-sss_status_t sss_rng_get_random(sss_rng_context_t *context,
-				uint8_t *random_data, size_t dataLen)
+sss_status_t sss_rng_context_init(sss_rng_context_t *context __unused,
+				  sss_session_t *session __unused)
 {
 	return kStatus_SSS_Fail;
 }
 
-int sscanf(const char *str, const char *format, ...)
+sss_status_t sss_rng_get_random(sss_rng_context_t *context __unused,
+				uint8_t *random_data __unused,
+				size_t dlen __unused)
+{
+	return kStatus_SSS_Fail;
+}
+
+int sscanf(const char *str __unused, const char *format __unused, ...)
 {
 	return -1;
 }

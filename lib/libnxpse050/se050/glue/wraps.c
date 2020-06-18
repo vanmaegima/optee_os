@@ -7,10 +7,15 @@
  */
 
 #include <fsl_sss_api.h>
+#ifdef ARRAY_SIZE
+#undef ARRAY_SIZE
+#endif
+
 #include <kernel/delay.h>
 #include <nxLog.h>
 #include <printk.h>
 #include <trace.h>
+#include <wraps.h>
 
 struct strbuf {
 	char buf[MAX_PRINT_SIZE];
@@ -43,7 +48,7 @@ void srand(unsigned int seed)
 	next = seed;
 }
 
-unsigned int time(void *foo)
+unsigned int time(void *foo __unused)
 {
 	static int time = 1;
 
@@ -120,7 +125,7 @@ static int __printf(2, 3) append(struct strbuf *sbuf, const char *fmt, ...)
 void nLog_au8(const char *subsystem, int level, const char *message,
 	      const unsigned char *buf, size_t len)
 {
-	int i = 0;
+	size_t i = 0;
 	int ok = 0;
 	struct strbuf sbuf = { 0 };
 	char *in = (char *)buf;
