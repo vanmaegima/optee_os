@@ -61,9 +61,7 @@ $$(call force, CFG_CRYPTO_DRV_$$(_var), y)
 endef
 
 # Definition of the HW and Cryto Driver Algorithm supported by all i.MX
-ifneq ($(CFG_CORE_SE05X), y)
 $(eval $(call cryphw-enable-drv-hw, HASH))
 $(eval $(call cryphw-enable-drv-hw, MKVB))
-endif
 
 endif
