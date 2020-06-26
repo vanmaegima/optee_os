@@ -82,6 +82,11 @@ sss_status_t se050_key_store_get_ecc_key_bin(sss_se05x_key_store_t *k_store,
 					     uint8_t *key,
 					     size_t *k_len);
 
+sss_status_t se050_ecc_gen_shared_secret(sss_se05x_session_t *session,
+					 uint32_t id,
+					 struct ecc_public_key_bin *key_pub,
+					 uint8_t *secret, unsigned long *len);
+
 sss_status_t se050_get_free_memory(pSe05xSession_t ctx, uint16_t *t,
 				   SE05x_MemoryType_t type);
 
