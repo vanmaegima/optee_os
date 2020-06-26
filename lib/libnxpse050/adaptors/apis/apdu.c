@@ -7,6 +7,7 @@
 #include <fsl_sss_api.h>
 #include <scp.h>
 #include <se050_apdu_apis.h>
+#include <string.h>
 
 /*
  * @param pCtx
@@ -691,8 +692,7 @@ sss_status_t se050_key_store_get_ecc_key_bin(sss_se05x_key_store_t *store,
 	case kSSS_CipherType_EC_TWISTED_ED:
 		add_ecc_header(key, &key_buf, &key_buflen, k_object->curve_id);
 		status = Se05x_API_ReadObject(s_ctx, k_object->keyId,
-					      0, 0, key_buf,
-					      key_len);
+					      0, 0, key_buf, key_len);
 		if (status != SM_OK)
 			goto exit;
 
@@ -713,6 +713,42 @@ sss_status_t se050_key_store_get_ecc_key_bin(sss_se05x_key_store_t *store,
 	ret = kStatus_SSS_Success;
 exit:
 	return ret;
+}
+
+/*
+ * @param session
+ * @param id
+ * @param pub_key
+ * @param secret
+ * @param len
+ *
+ * @return sss_status_t
+ */
+sss_status_t se050_ecc_gen_shared_secret(sss_se05x_session_t *session,
+					 uint32_t kid,
+					 struct ecc_public_key_bin *key_pub,
+					 uint8_t *secret, unsigned long *len)
+{
+	uint8_t key[256] = { 0x04 }; /* tag */
+	smStatus_t status = SM_OK;
+	uint8_t *p = key + 1;
+	size_t key_len = 0;
+
+	key_len = key_pub->x_len + key_pub->y_len + 1;
+	if (key_len > sizeof(key)) {
+		EMSG("small buffer");
+		return kStatus_SSS_Fail;
+	}
+
+	memcpy(p, key_pub->x, key_pub->x_len);
+	p += key_pub->x_len;
+	memcpy(p, key_pub->y, key_pub->y_len);
+	status = Se05x_API_ECGenSharedSecret(&session->s_ctx, kid, key, key_len,
+					     secret, len);
+	if (status != SM_OK)
+		return kStatus_SSS_Fail;
+
+	return kStatus_SSS_Success;
 }
 
 /*
