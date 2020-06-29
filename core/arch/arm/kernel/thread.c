@@ -97,12 +97,18 @@ linkage uint32_t name[num_stacks] \
 #define GET_STACK(stack) \
 	((vaddr_t)(stack) + STACK_SIZE(stack))
 
-DECLARE_STACK(stack_tmp, CFG_TEE_CORE_NB_CORE, STACK_TMP_SIZE, static);
 DECLARE_STACK(stack_abt, CFG_TEE_CORE_NB_CORE, STACK_ABT_SIZE, static);
+#ifdef CFG_NXP_SE05X_SVC
+DECLARE_STACK(stack_tmp, CFG_TEE_CORE_NB_CORE, 5 * STACK_TMP_SIZE, static);
+#ifndef CFG_WITH_PAGER
+DECLARE_STACK(stack_thread, CFG_NUM_THREADS, 2 * STACK_THREAD_SIZE, static);
+#endif
+#else
+DECLARE_STACK(stack_tmp, CFG_TEE_CORE_NB_CORE, STACK_TMP_SIZE, static);
 #ifndef CFG_WITH_PAGER
 DECLARE_STACK(stack_thread, CFG_NUM_THREADS, STACK_THREAD_SIZE, static);
 #endif
-
+#endif
 const void *stack_tmp_export = (uint8_t *)stack_tmp + sizeof(stack_tmp[0]) -
 			       (STACK_TMP_OFFS + STACK_CANARY_SIZE / 2);
 const uint32_t stack_tmp_stride = sizeof(stack_tmp[0]);
