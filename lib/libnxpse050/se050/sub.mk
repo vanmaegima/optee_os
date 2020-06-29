@@ -25,10 +25,10 @@ incdirs-y += ./simw-top/sss/src/user/crypto/
 srcs-y += glue/stubs.c
 srcs-y += glue/wraps.c
 srcs-y += glue/i2c.c
+srcs-y += glue/smCom.c
 
 # hostlib/hostLib/libCommon/smCom/
 srcs-y += simw-top/hostlib/hostLib/libCommon/smCom/smComT1oI2C.c
-srcs-y += simw-top/hostlib/hostLib/libCommon/smCom/smCom.c
 
 # hostlib/hostLib/libCommon/smCom/T1oI2C/
 srcs-y += simw-top/hostlib/hostLib/libCommon/smCom/T1oI2C/phNxpEse_Api.c
