@@ -89,8 +89,6 @@ libdir = lib/libutils
 include mk/lib.mk
 
 ifeq ($(CFG_CORE_SE05X), y)
-# TODO: suspect large stacks in the SE050 middleware
-CFG_WITH_STACK_CANARIES = n
 CFG_CORE_SE05X_I2C_BUS ?= 0x2
 CFG_CORE_SE05X_BAUDRATE ?= 3400000
 CFG_CORE_SE05X_INIT_NVM ?= 0
