@@ -5,18 +5,8 @@
  */
 
 #include <nxScp03_Apis.h>
-#include <se050_default_keys.h>
 #include <se050_user_apis.h>
-
-#ifndef CFG_CORE_SE05X_OEFID
-#define OEFID SE050DV
-#else
-#define OEFID CFG_CORE_SE05X_OEFID
-#endif
-
-#if OEFID > SE050DV
-#error "Invalid OEFID"
-#endif
+#include <se050_utils.h>
 
 /*
  * @param k_object
@@ -56,6 +46,7 @@ static sss_status_t alloc_scp_key_to_auth(sss_object_t *k_object,
 static sss_status_t prepare_host_scp(NXSCP03_AuthCtx_t *scp,
 				     struct se050_auth_ctx *auth,
 				     sss_key_store_t *k_store,
+				     struct se050_scp_key *keys,
 				     uint32_t oid)
 {
 	sss_status_t status = kStatus_SSS_Fail;
@@ -78,10 +69,9 @@ static sss_status_t prepare_host_scp(NXSCP03_AuthCtx_t *scp,
 	if (status != kStatus_SSS_Success)
 		return status;
 
-	len = sizeof(se050_default_keys[OEFID].enc);
+	len = sizeof(keys->enc);
 	status = sss_host_key_store_set_key(k_store, &pStatic_ctx->Enc,
-					    se050_default_keys[OEFID].enc,
-					    len, len * 8, NULL, 0);
+					    keys->enc, len, len * 8, NULL, 0);
 	if (status != kStatus_SSS_Success)
 		return status;
 
@@ -90,10 +80,9 @@ static sss_status_t prepare_host_scp(NXSCP03_AuthCtx_t *scp,
 	if (status != kStatus_SSS_Success)
 		return status;
 
-	len = sizeof(se050_default_keys[OEFID].mac);
+	len = sizeof(keys->mac);
 	status = sss_host_key_store_set_key(k_store, &pStatic_ctx->Mac,
-					    se050_default_keys[OEFID].mac,
-					    len, len * 8, NULL, 0);
+					    keys->mac, len, len * 8, NULL, 0);
 	if (status != kStatus_SSS_Success)
 		return status;
 
@@ -102,10 +91,9 @@ static sss_status_t prepare_host_scp(NXSCP03_AuthCtx_t *scp,
 	if (status != kStatus_SSS_Success)
 		return status;
 
-	len = sizeof(se050_default_keys[OEFID].dek);
+	len = sizeof(keys->dek);
 	status = sss_host_key_store_set_key(k_store, &pStatic_ctx->Dek,
-					    se050_default_keys[OEFID].dek,
-					    len, len * 8, NULL, 0);
+					    keys->dek, len, len * 8, NULL, 0);
 	if (status != kStatus_SSS_Success)
 		return status;
 
@@ -138,7 +126,8 @@ sss_status_t se050_configure_host(sss_session_t *host_session,
 				  sss_key_store_t *host_ks,
 				  SE_Connect_Ctx_t *open_ctx,
 				  struct se050_auth_ctx *auth,
-				  SE_AuthType_t auth_type)
+				  SE_AuthType_t auth_type,
+				  struct se050_scp_key *keys)
 {
 	sss_status_t status = kStatus_SSS_Fail;
 	uint32_t host_oid = 0;
@@ -162,11 +151,35 @@ sss_status_t se050_configure_host(sss_session_t *host_session,
 	if (status != kStatus_SSS_Success)
 		return status;
 prepare:
-	status = prepare_host_scp(&open_ctx->auth.ctx, auth, host_ks, host_oid);
+	status = prepare_host_scp(&open_ctx->auth.ctx, auth, host_ks, keys,
+				  host_oid);
 	if (status != kStatus_SSS_Success)
 		return status;
 
 	open_ctx->auth.authType = auth_type;
 
 	return status;
+}
+
+/**
+ *
+ * @param keyStore
+ * @param keyObject
+ * @param data
+ * @param dataLen
+ * @param pKeyBitLen
+ *
+ * @return sss_status_t
+ */
+sss_status_t se050_host_key_store_get_key(sss_key_store_t *ks __unused,
+					  sss_object_t *ko, uint8_t *data,
+					  size_t *byte_len, size_t *bit_len)
+{
+	sss_user_impl_object_t *key_object = (sss_user_impl_object_t *)ko;
+
+	memcpy(data, key_object->key, key_object->contents_size);
+	*byte_len = key_object->contents_size;
+	*bit_len = 8 * key_object->contents_size;
+
+	return kStatus_SSS_Success;
 }

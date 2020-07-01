@@ -65,8 +65,10 @@ sss_status_t se050_get_oid(sss_key_object_mode_t mode, uint32_t *val)
 	}
 
 	oid = generate_oid();
-	if (!oid)
+	if (!oid) {
+		EMSG("cant access rng");
 		return kStatus_SSS_Fail;
+	}
 
 	if (type == kKeyObject_Mode_Persistent) {
 		IMSG("allocated persistent object: 0x%x", oid);

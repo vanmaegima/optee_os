@@ -20,6 +20,7 @@ incdirs-y += ../se050/simw-top/sss/port/default/
 incdirs-y += ../se050/simw-top/sss/src/user/crypto/
 
 # called by the core library
+srcs-y += utils/scp_config.c
 srcs-y += utils/context.c
 srcs-y += utils/utils.c
 srcs-y += utils/info.c
