@@ -4,6 +4,8 @@
  * Author: Jorge Ramirez <jorge@foundries.io>
  */
 
+#include <fsl_sss_api.h>
+#include <scp.h>
 #include <se050_apdu_apis.h>
 #include <string.h>
 
@@ -769,4 +771,48 @@ sss_status_t  se050_get_free_memory(pSe05xSession_t ctx, uint16_t *p,
 		return kStatus_SSS_Fail;
 
 	return kStatus_SSS_Success;
+}
+
+/*
+ * @param ctx
+ * @param cmd
+ *
+ * @return sss_status_t
+ *
+ */
+sss_status_t se050_send_scp03_rotate_cmd(sss_se05x_ctx_t *ctx,
+					 struct s050_scp_rotate_cmd *cmd)
+{
+	sss_se05x_session_t *session = &ctx->session;
+	uint8_t rsp[64] = { 0 };
+	size_t rsp_len = sizeof(rsp);
+	tlvHeader_t hdr = {
+		.hdr = { [0] = 0x80, /* GP_CLA_BYTE   */
+			 [1] = 0xd8, /* GP_INS_PUTKEY */
+			 [2] = 0,
+			 [3] = PUT_KEYS_KEY_IDENTIFIER,
+		},
+	};
+	uint8_t key_ver = ctx->open_ctx.auth.ctx.scp03.pStatic_ctx->keyVerNo;
+	smStatus_t st = SM_NOT_OK;
+
+	/* set the version of the key to replace */
+	hdr.hdr[2] = key_ver;
+
+	st = DoAPDUTxRx_s_Case4(&session->s_ctx, &hdr, cmd->cmd, cmd->cmd_len,
+				rsp, &rsp_len);
+
+	st = (rsp[rsp_len - 2] << 8) + rsp[rsp_len - 1];
+	if (st != SM_OK)
+		goto error;
+
+	if (!memcmp(rsp, cmd->kcv, cmd->kcv_len)) {
+		IMSG("rotation successful");
+		return kStatus_SSS_Success;
+	}
+
+	EMSG("rotation failed: invalid check values");
+error:
+	EMSG("rotation error");
+	return kStatus_SSS_Fail;
 }

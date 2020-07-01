@@ -29,8 +29,9 @@ typedef struct {
 	sss_key_store_t host_ks;
 } sss_se05x_ctx_t;
 
-sss_status_t se050_kestore_and_object_init(sss_se05x_ctx_t *ctx);
+sss_status_t se050_key_store_and_object_init(sss_se05x_ctx_t *ctx);
 sss_status_t se050_session_open(sss_se05x_ctx_t *ctx, bool encryption);
 void se050_delete_persistent_key(uint8_t *data, size_t len);
+sss_status_t se050_rotate_spc03_keys(sss_se05x_ctx_t *ctx);
 
 #endif /* SE050_SSS_APIS_H_ */

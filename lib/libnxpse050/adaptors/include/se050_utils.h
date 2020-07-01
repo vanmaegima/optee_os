@@ -9,6 +9,19 @@
 
 #include <se050.h>
 
+struct se050_scp_key {
+	uint8_t enc[16];
+	uint8_t mac[16];
+	uint8_t dek[16];
+};
+
+struct s050_scp_rotate_cmd {
+	uint8_t cmd[128];
+	size_t cmd_len;
+	uint8_t kcv[16];
+	size_t kcv_len;
+};
+
 /* watermark keys to support SKS search */
 #define SE050_KEY_WATERMARK		0xDEADBEEF
 
@@ -29,5 +42,7 @@ void se050_refcount_init_ctx(uint8_t **cnt);
 int se050_refcount_final_ctx(uint8_t *cnt);
 
 void se050_display_board_info(sss_se05x_session_t *session);
-
+sss_status_t se050_prepare_rotate_cmd(sss_se05x_ctx_t *ctx,
+				      struct s050_scp_rotate_cmd *cmd,
+				      struct se050_scp_key *keys);
 #endif /* SE050_UTILS_H_ */

@@ -7,6 +7,7 @@
 #ifndef SE05X_DEFAULT_KEYS_H_
 #define SE05X_DEFAULT_KEYS_H_
 
+#include <se050_utils.h>
 #include <stdint.h>
 
 /* OF ID */
@@ -26,11 +27,41 @@
 #define SE050C2 5
 #define SE050DV 6
 
-static struct scp_key {
-	uint8_t enc[16];
-	uint8_t mac[16];
-	uint8_t dek[16];
-} se050_default_keys[] = {
+sss_status_t se050_get_id_from_ofid(uint32_t ofid, uint32_t *id)
+{
+	sss_status_t status = kStatus_SSS_Success;
+
+	switch (ofid) {
+	case SE050A1_ID:
+		*id = 0;
+		break;
+	case SE050A2_ID:
+		*id = 1;
+		break;
+	case SE050B1_ID:
+		*id = 2;
+		break;
+	case SE050B2_ID:
+		*id = 3;
+		break;
+	case SE050C1_ID:
+		*id = 4;
+		break;
+	case SE050C2_ID:
+		*id = 5;
+		break;
+	case SE050DV_ID:
+		*id = 6;
+		break;
+	default:
+		EMSG("invalid ofid");
+		status = kStatus_SSS_Fail;
+	}
+
+	return status;
+}
+
+static struct se050_scp_key se050_default_keys[] = {
 	[SE050A1] = {
 		.enc = { 0x34, 0xae, 0x09, 0x67, 0xe3, 0x29, 0xe9, 0x51,
 			 0x8e, 0x72, 0x65, 0xd5, 0xad, 0xcc, 0x01, 0xc2 },
