@@ -11,7 +11,7 @@
 
 struct s050_scp_rotate_cmd;
 
-sss_status_t se050_factory_reset(sss_se05x_ctx_t *ctx);
+sss_status_t se050_factory_reset(pSe05xSession_t ctx);
 
 sss_status_t se050_cipher_update_nocache(sss_se05x_symmetric_t *ctx,
 					 const uint8_t *src, size_t src_len,
@@ -84,7 +84,7 @@ sss_status_t se050_key_store_get_ecc_key_bin(sss_se05x_key_store_t *k_store,
 					     uint8_t *key,
 					     size_t *k_len);
 
-sss_status_t se050_ecc_gen_shared_secret(sss_se05x_session_t *session,
+sss_status_t se050_ecc_gen_shared_secret(pSe05xSession_t ctx,
 					 uint32_t id,
 					 struct ecc_public_key_bin *key_pub,
 					 uint8_t *secret, unsigned long *len);
@@ -92,7 +92,7 @@ sss_status_t se050_ecc_gen_shared_secret(sss_se05x_session_t *session,
 sss_status_t se050_get_free_memory(pSe05xSession_t ctx, uint16_t *t,
 				   SE05x_MemoryType_t type);
 
-sss_status_t se050_send_scp03_rotate_cmd(sss_se05x_ctx_t *ctx,
+sss_status_t se050_send_scp03_rotate_cmd(pSe05xSession_t ctx,
 					 struct s050_scp_rotate_cmd *cmd);
 
 #endif /* SE050_APDU_APIS_H_ */

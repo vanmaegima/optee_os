@@ -14,14 +14,14 @@
  *
  * @return sss_status_t
  */
-sss_status_t se050_factory_reset(sss_se05x_ctx_t *ctx)
+sss_status_t se050_factory_reset(pSe05xSession_t ctx)
 {
 	smStatus_t st = SM_OK;
 
 	if (!ctx)
 		return kStatus_SSS_Fail;
 
-	st = Se05x_API_DeleteAll_Iterative(&ctx->session.s_ctx);
+	st = Se05x_API_DeleteAll_Iterative(ctx);
 	if (st != SM_OK)
 		return kStatus_SSS_Fail;
 
@@ -724,7 +724,7 @@ exit:
  *
  * @return sss_status_t
  */
-sss_status_t se050_ecc_gen_shared_secret(sss_se05x_session_t *session,
+sss_status_t se050_ecc_gen_shared_secret(pSe05xSession_t ctx,
 					 uint32_t kid,
 					 struct ecc_public_key_bin *key_pub,
 					 uint8_t *secret, unsigned long *len)
@@ -743,7 +743,7 @@ sss_status_t se050_ecc_gen_shared_secret(sss_se05x_session_t *session,
 	memcpy(p, key_pub->x, key_pub->x_len);
 	p += key_pub->x_len;
 	memcpy(p, key_pub->y, key_pub->y_len);
-	status = Se05x_API_ECGenSharedSecret(&session->s_ctx, kid, key, key_len,
+	status = Se05x_API_ECGenSharedSecret(ctx, kid, key, key_len,
 					     secret, len);
 	if (status != SM_OK)
 		return kStatus_SSS_Fail;
@@ -780,10 +780,9 @@ sss_status_t  se050_get_free_memory(pSe05xSession_t ctx, uint16_t *p,
  * @return sss_status_t
  *
  */
-sss_status_t se050_send_scp03_rotate_cmd(sss_se05x_ctx_t *ctx,
+sss_status_t se050_send_scp03_rotate_cmd(pSe05xSession_t ctx,
 					 struct s050_scp_rotate_cmd *cmd)
 {
-	sss_se05x_session_t *session = &ctx->session;
 	uint8_t rsp[64] = { 0 };
 	size_t rsp_len = sizeof(rsp);
 	tlvHeader_t hdr = {
@@ -793,13 +792,15 @@ sss_status_t se050_send_scp03_rotate_cmd(sss_se05x_ctx_t *ctx,
 			 [3] = PUT_KEYS_KEY_IDENTIFIER,
 		},
 	};
-	uint8_t key_ver = ctx->open_ctx.auth.ctx.scp03.pStatic_ctx->keyVerNo;
 	smStatus_t st = SM_NOT_OK;
 
-	/* set the version of the key to replace */
-	hdr.hdr[2] = key_ver;
+	if (!ctx || !cmd)
+		return kStatus_SSS_Fail;
 
-	st = DoAPDUTxRx_s_Case4(&session->s_ctx, &hdr, cmd->cmd, cmd->cmd_len,
+	/* set the version of the key to replace */
+	hdr.hdr[2] = cmd->cmd[0];
+
+	st = DoAPDUTxRx_s_Case4(ctx, &hdr, cmd->cmd, cmd->cmd_len,
 				rsp, &rsp_len);
 
 	st = (rsp[rsp_len - 2] << 8) + rsp[rsp_len - 1];

@@ -91,7 +91,7 @@ sss_status_t se050_rotate_scp03_keys(sss_se05x_ctx_t *ctx)
 	if (status != kStatus_SSS_Success)
 		return status;
 
-	status = se050_send_scp03_rotate_cmd(ctx, &cmd);
+	status = se050_send_scp03_rotate_cmd(&session->s_ctx, &cmd);
 	if (status != kStatus_SSS_Success)
 		return status;
 
