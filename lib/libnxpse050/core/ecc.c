@@ -480,7 +480,7 @@ TEE_Result crypto_acipher_ecc_shared_secret(struct ecc_keypair *private_key,
 		free(key.x);
 		return ret;
 	}
-	st = se050_ecc_gen_shared_secret(se050_session, kid, &key,
+	st = se050_ecc_gen_shared_secret(&se050_session->s_ctx, kid, &key,
 					 secret, secret_len);
 	free(key.x);
 	free(key.y);

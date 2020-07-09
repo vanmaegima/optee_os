@@ -27,7 +27,7 @@ static TEE_Result core_service_init(sss_se05x_ctx_t *ctx,
 	IMSG("========================");
 	IMSG(" WARNING: FACTORY RESET");
 	IMSG("========================");
-	status = se050_factory_reset(ctx);
+	status = se050_factory_reset(&ctx->session.s_ctx);
 	if (kStatus_SSS_Success != status)
 		return TEE_ERROR_GENERIC;
 #endif
