@@ -38,6 +38,8 @@ uint32_t se050_ecc_keypair_from_nvm(struct ecc_keypair *key);
 uint64_t se050_generate_private_key(uint32_t oid);
 
 void se050_signature_der2bin(uint8_t *p, size_t *p_len);
+sss_status_t se050_signature_bin2der(uint8_t *signature, size_t *signature_len,
+				     uint8_t *raw, size_t raw_len);
 void se050_refcount_init_ctx(uint8_t **cnt);
 int se050_refcount_final_ctx(uint8_t *cnt);
 

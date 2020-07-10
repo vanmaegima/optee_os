@@ -332,7 +332,7 @@ TEE_Result crypto_acipher_ecc_verify(uint32_t algo, struct ecc_public_key *key,
 	sss_se05x_asymmetric_t ctx = { 0 };
 	sss_se05x_object_t kobject = { 0 };
 	TEE_Result res = TEE_SUCCESS;
-	uint8_t signature[256];
+	uint8_t signature[128];
 	size_t signature_len = sizeof(signature);
 	size_t key_bytes = 0;
 	size_t key_bits = 0;
@@ -353,8 +353,8 @@ TEE_Result crypto_acipher_ecc_verify(uint32_t algo, struct ecc_public_key *key,
 		return TEE_ERROR_BAD_PARAMETERS;
 	}
 
-	st = sss_util_asn1_ecdaa_get_signature(signature, &signature_len,
-					       (uint8_t *)sig, sig_len);
+	st = se050_signature_bin2der(signature, &signature_len,
+				     (uint8_t *)sig, sig_len);
 	if (st != kStatus_SSS_Success) {
 		res = TEE_ERROR_BAD_PARAMETERS;
 		goto exit;
