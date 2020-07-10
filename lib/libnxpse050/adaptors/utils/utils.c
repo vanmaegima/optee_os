@@ -175,6 +175,44 @@ void se050_signature_der2bin(uint8_t *p, size_t *p_len)
 }
 
 /*
+ * @param signature
+ * @param signature_len
+ * @param raw
+ * @param raw_len
+ */
+sss_status_t se050_signature_bin2der(uint8_t *signature, size_t *signature_len,
+				     uint8_t *raw, size_t raw_len)
+{
+	size_t der_len =  6 + raw_len;
+	size_t r_len = raw_len / 2;
+	size_t s_len = raw_len / 2;
+
+	if (*signature_len < der_len) {
+		EMSG("ECDAA Signature buffer overflow");
+		return kStatus_SSS_Fail;
+	}
+
+	if (raw_len != 48 && raw_len != 56 && raw_len != 64 && raw_len != 96) {
+		EMSG("ECDAA Invalid length in bin signature %d", raw_len);
+		return kStatus_SSS_Fail;
+	}
+
+	*signature_len = der_len;
+
+	signature[0] = 0x30;
+	signature[1] = (uint8_t)(raw_len + 4);
+	signature[2] = 0x02;
+	signature[3] = (uint8_t)r_len;
+	memcpy(&signature[4], &raw[0], r_len);
+
+	signature[3 + r_len + 1] = 0x02;
+	signature[3 + r_len + 2] = (uint8_t)s_len;
+	memcpy(&signature[3 + r_len + 3], &raw[r_len], s_len);
+
+	return kStatus_SSS_Success;
+}
+
+/*
  * @param cnt
  */
 void se050_refcount_init_ctx(uint8_t **cnt)
