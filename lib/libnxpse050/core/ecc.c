@@ -9,6 +9,8 @@
 #include <kernel/panic.h>
 #include <se050.h>
 #include <string.h>
+#include <utee_defines.h>
+#include <util.h>
 
 static uint32_t algo_tee2se050(uint32_t algo)
 {
@@ -129,6 +131,32 @@ static TEE_Result ecc_get_key_size(uint32_t curve, uint32_t algo,
 		*kb = 0;
 		*kB = 0;
 		return TEE_ERROR_NOT_SUPPORTED;
+	}
+
+	return TEE_SUCCESS;
+}
+
+static TEE_Result ecc_get_msg_size(uint32_t algo, size_t *len)
+{
+	switch (algo) {
+	case kAlgorithm_SSS_ECDSA_SHA1:
+		*len = MIN(TEE_SHA1_HASH_SIZE, *len);
+		break;
+	case kAlgorithm_SSS_ECDSA_SHA224:
+		*len = MIN(TEE_SHA224_HASH_SIZE, *len);
+		break;
+	case kAlgorithm_SSS_ECDSA_SHA256:
+		*len = MIN(TEE_SHA256_HASH_SIZE, *len);
+		break;
+	case kAlgorithm_SSS_ECDSA_SHA384:
+		*len = MIN(TEE_SHA384_HASH_SIZE, *len);
+		break;
+	case kAlgorithm_SSS_ECDSA_SHA512:
+		*len = MIN(TEE_SHA512_HASH_SIZE, *len);
+		break;
+	default:
+		EMSG("invalid se050 0x%x algorithm", algo);
+		return TEE_ERROR_BAD_PARAMETERS;
 	}
 
 	return TEE_SUCCESS;
@@ -294,6 +322,10 @@ TEE_Result crypto_acipher_ecc_sign(uint32_t algo, struct ecc_keypair *key,
 	if (res != TEE_SUCCESS)
 		goto exit;
 
+	res = ecc_get_msg_size(algo_tee2se050(algo), &msg_len);
+	if (res != TEE_SUCCESS)
+		goto exit;
+
 	res = se050_inject_keypair(&kobject, key, key_bytes);
 	if (res != TEE_SUCCESS)
 		goto exit;
@@ -338,6 +370,10 @@ TEE_Result crypto_acipher_ecc_verify(uint32_t algo, struct ecc_public_key *key,
 	size_t key_bits = 0;
 
 	res = ecc_get_key_size(key->curve, algo, &key_bytes, &key_bits);
+	if (res != TEE_SUCCESS)
+		goto exit;
+
+	res = ecc_get_msg_size(algo_tee2se050(algo), &msg_len);
 	if (res != TEE_SUCCESS)
 		goto exit;
 
