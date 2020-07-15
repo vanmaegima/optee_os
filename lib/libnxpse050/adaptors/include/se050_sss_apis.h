@@ -11,7 +11,7 @@
 #include <nxScp03_Types.h>
 
 extern sss_policy_t se050_asym_policy;
-
+struct se050_scp_key;
 /*
  * Context management
  */
@@ -30,8 +30,9 @@ typedef struct {
 } sss_se05x_ctx_t;
 
 sss_status_t se050_key_store_and_object_init(sss_se05x_ctx_t *ctx);
-sss_status_t se050_session_open(sss_se05x_ctx_t *ctx, bool encryption);
 void se050_delete_persistent_key(uint8_t *data, size_t len);
+sss_status_t se050_enable_scp03(sss_se05x_session_t *session);
 sss_status_t se050_rotate_spc03_keys(sss_se05x_ctx_t *ctx);
-
+sss_status_t se050_session_open(sss_se05x_ctx_t *ctx,
+				struct se050_scp_key *key);
 #endif /* SE050_SSS_APIS_H_ */

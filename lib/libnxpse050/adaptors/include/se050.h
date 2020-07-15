@@ -18,5 +18,6 @@
 
 extern sss_se05x_key_store_t *se050_kstore;
 extern sss_se05x_session_t *se050_session;
+extern sss_se05x_ctx_t se050_ctx;
 
 #endif /* SE050_H_ */

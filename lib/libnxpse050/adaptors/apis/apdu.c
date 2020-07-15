@@ -780,7 +780,7 @@ sss_status_t  se050_get_free_memory(pSe05xSession_t ctx, uint16_t *p,
  * @return sss_status_t
  *
  */
-sss_status_t se050_send_scp03_rotate_cmd(pSe05xSession_t ctx,
+sss_status_t se050_scp03_send_rotate_cmd(pSe05xSession_t ctx,
 					 struct s050_scp_rotate_cmd *cmd)
 {
 	uint8_t rsp[64] = { 0 };

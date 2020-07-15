@@ -92,7 +92,7 @@ sss_status_t se050_ecc_gen_shared_secret(pSe05xSession_t ctx,
 sss_status_t se050_get_free_memory(pSe05xSession_t ctx, uint16_t *t,
 				   SE05x_MemoryType_t type);
 
-sss_status_t se050_send_scp03_rotate_cmd(pSe05xSession_t ctx,
+sss_status_t se050_scp03_send_rotate_cmd(pSe05xSession_t ctx,
 					 struct s050_scp_rotate_cmd *cmd);
 
 #endif /* SE050_APDU_APIS_H_ */

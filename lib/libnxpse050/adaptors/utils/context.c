@@ -8,18 +8,15 @@
 #include <kernel/panic.h>
 #include <se050.h>
 
-sss_se05x_key_store_t		*se050_kstore;
-sss_se05x_session_t		*se050_session;
-static sss_se05x_ctx_t		se050_ctx;
+sss_se05x_key_store_t *se050_kstore;
+sss_se05x_session_t *se050_session;
+sss_se05x_ctx_t se050_ctx;
 
-static TEE_Result core_service_init(sss_se05x_ctx_t *ctx,
-				    sss_se05x_session_t **session,
-				    sss_se05x_key_store_t **kstore,
-				    bool encryption)
+TEE_Result se050_core_service_init(struct se050_scp_key *keys)
 {
 	sss_status_t status = kStatus_SSS_Success;
 
-	status = se050_session_open(ctx, encryption);
+	status = se050_session_open(&se050_ctx, keys);
 	if (status != kStatus_SSS_Success)
 		return TEE_ERROR_GENERIC;
 
@@ -27,83 +24,50 @@ static TEE_Result core_service_init(sss_se05x_ctx_t *ctx,
 	IMSG("========================");
 	IMSG(" WARNING: FACTORY RESET");
 	IMSG("========================");
-	status = se050_factory_reset(&ctx->session.s_ctx);
+	status = se050_factory_reset(&se050_ctx.session.s_ctx);
 	if (kStatus_SSS_Success != status)
 		return TEE_ERROR_GENERIC;
 #endif
-	if (ctx->session.subsystem == kType_SSS_SubSystem_NONE)
+	if (se050_ctx.session.subsystem == kType_SSS_SubSystem_NONE)
 		return TEE_ERROR_GENERIC;
 
-	status = se050_key_store_and_object_init(ctx);
+	status = se050_key_store_and_object_init(&se050_ctx);
 	if (status != kStatus_SSS_Success)
 		return TEE_ERROR_GENERIC;
 
-	IMSG("se050 [scp03 %s]", encryption ? "ON" : "OFF");
-	*session = (sss_se05x_session_t *)((void *)&ctx->session);
-	*kstore = (sss_se05x_key_store_t *)((void *)&ctx->ks);
+	se050_session = (sss_se05x_session_t *)((void *)&se050_ctx.session);
+	se050_kstore = (sss_se05x_key_store_t *)((void *)&se050_ctx.ks);
 
 	return TEE_SUCCESS;
 }
 
-/*
- *  The display information shows the OFEID we need to setup encryption.
- *  Therefore it should be done over an unencrypted/unsecure channel
- */
 static TEE_Result se050_service_init(void)
 {
-	sss_status_t status = kStatus_SSS_Success;
-	TEE_Result ret = TEE_SUCCESS;
-	bool enable_scp03 = false;
-	bool provision = false;
-	bool reinit = false;
-
-#if defined(CFG_CORE_SE05X_SCP03_PROVISION)
-	provision = !!CFG_CORE_SE05X_SCP03_PROVISION;
-#endif
-#if defined(CFG_CORE_SE05X_DISPLAY_INFO)
-	reinit = !!CFG_CORE_SE05X_DISPLAY_INFO;
-#endif
-	if (provision || !reinit)
-		enable_scp03 = true;
-
-re_initialize:
-	ret = core_service_init(&se050_ctx, &se050_session, &se050_kstore,
-				enable_scp03);
-	if (ret != TEE_SUCCESS)
+	if (se050_core_service_init(NULL) != TEE_SUCCESS)
 		panic();
 
-	/* after provisioning the new keys, reboot the system and provide
-	 * a build with the new ones (until these can be read from some secured
-	 * storage - TODO)
+#if defined(CFG_CORE_SE05X_DISPLAY_INFO)
+	se050_display_board_info(se050_session);
+
+	/* a reinit is required if display info is executed */
+	sss_se05x_session_close(se050_session);
+	if (se050_core_service_init(NULL) != TEE_SUCCESS)
+		panic();
+#endif
+	IMSG("se050 ready [scp03 off]");
+
+#if defined CFG_CORE_SE05X_SCP03_EARLY && CFG_CORE_SE05X_SCP03_EARLY
+	if (se050_enable_scp03(se050_session) != kStatus_SSS_Success)
+		panic();
+	/* since we have scp03 enabled at this point, we could also
+	 * provision the new keys (they wont be in storage but provided
+	 * in config
 	 */
-	if (provision) {
-		IMSG("provisioning scp03 keys");
-		status = se050_rotate_scp03_keys(&se050_ctx);
-		if (status != kStatus_SSS_Success)
-			panic();
-
-		sss_se05x_session_close(se050_session);
-
-		IMSG("now rebuild the image with the new keys and boot it");
-		IMSG("=======================");
-		IMSG("PLEASE REBOOT THE BOARD");
-		IMSG("waiting..");
-		IMSG("======================");
-		/* do not allow further usage of the SE050 without a reboot */
-		while (true)
-			;
-	}
-
-	if (!enable_scp03) {
-		se050_display_board_info(se050_session);
-		sss_se05x_session_close(se050_session);
-		/* enforce scp03 */
-		enable_scp03 = true;
-		goto re_initialize;
-	}
-
-	IMSG("se050 [ready]");
-
+#if defined(CFG_CORE_SE05X_SCP03_PROVISION) && CFG_CORE_SE05X_SCP03_PROVISION
+	if (se050_rotate_scp03_keys(&se050_ctx) != kStatus_SSS_Success)
+		panic();
+#endif
+#endif
 	return TEE_SUCCESS;
 }
 
