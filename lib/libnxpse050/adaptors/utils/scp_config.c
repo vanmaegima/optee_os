@@ -4,15 +4,137 @@
  * Author: Jorge Ramirez <jorge@foundries.io>
  *
  * This sequence follows the Global Platform Specification 2.2 - Ammendment D
- * for Secure Channel Porotocol 03
+ * for Secure Channel Protocol 03
  *
  */
-
+#include <assert.h>
+#include <bitstring.h>
+#include <crypto/crypto.h>
+#include <kernel/mutex.h>
+#include <kernel/refcount.h>
+#include <kernel/thread.h>
+#include <mm/mobj.h>
+#include <optee_rpc_cmd.h>
 #include <se050.h>
+#include <se050_default_keys.h>
 #include <se050_utils.h>
 #include <scp.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
+#include <tee_api_defines_extensions.h>
+#include <tee/tadb.h>
+#include <tee/tee_fs.h>
+#include <tee/tee_fs_rpc.h>
+#include <tee/tee_pobj.h>
+#include <tee/tee_svc_storage.h>
+#include <utee_defines.h>
+
+struct tee_scp03db_dir {
+	const struct tee_file_operations *ops;
+	struct tee_file_handle *fh;
+};
+
+static const char scp03db_obj_id[] = "scp03.db";
+static struct tee_pobj po = {
+	.obj_id_len = sizeof(scp03db_obj_id),
+	.obj_id = (void *)scp03db_obj_id,
+};
+
+static TEE_Result scp03db_delete_keys(void)
+{
+	struct tee_scp03db_dir *db = calloc(1, sizeof(struct tee_scp03db_dir));
+	TEE_Result res = TEE_SUCCESS;
+
+	assert(db);
+
+	db->ops = tee_svc_storage_file_ops(TEE_STORAGE_PRIVATE);
+	res = db->ops->open(&po, NULL, &db->fh);
+
+	/* nothing to delete */
+	if (res == TEE_ERROR_ITEM_NOT_FOUND) {
+		free(db);
+		return TEE_SUCCESS;
+	}
+
+	/* the filesystem might not be accessibe */
+	if (res != TEE_SUCCESS)
+		panic();
+
+	db->ops->close(&db->fh);
+	db->ops->remove(&po);
+	free(db);
+
+	return TEE_SUCCESS;
+}
+
+static TEE_Result scp03db_write_keys(struct se050_scp_key *keys)
+{
+	struct tee_scp03db_dir *db = calloc(1, sizeof(struct tee_scp03db_dir));
+	TEE_Result res = TEE_SUCCESS;
+	size_t len = sizeof(*keys);
+
+	assert(db);
+
+	db->ops = tee_svc_storage_file_ops(TEE_STORAGE_PRIVATE);
+
+	res = db->ops->open(&po, NULL, &db->fh);
+	if (res != TEE_SUCCESS && res != TEE_ERROR_ITEM_NOT_FOUND) {
+		EMSG("Error 0x%x", res);
+		panic();
+	}
+
+	IMSG("write scp03.db");
+	res = db->ops->create(&po, true, NULL, 0, NULL, 0, keys, len, &db->fh);
+	if (res != TEE_SUCCESS)
+		panic();
+
+	IMSG("write ok");
+
+	IMSG("scp03 new keys in scp.db");
+	nLog_au8("scp03.db ", 0xff, "dek: ", keys->dek, sizeof(keys->dek));
+	nLog_au8("scp03.db ", 0xff, "mac: ", keys->mac, sizeof(keys->mac));
+	nLog_au8("scp03.db ", 0xff, "enc: ", keys->enc, sizeof(keys->enc));
+
+	db->ops->close(&db->fh);
+	free(db);
+
+	return TEE_SUCCESS;
+}
+
+static TEE_Result scp03db_read_keys(struct se050_scp_key *keys)
+{
+	struct tee_scp03db_dir *db = calloc(1, sizeof(struct tee_scp03db_dir));
+	TEE_Result res = TEE_SUCCESS;
+	size_t len = sizeof(*keys);
+
+	assert(db);
+
+	db->ops = tee_svc_storage_file_ops(TEE_STORAGE_PRIVATE);
+
+	res = db->ops->open(&po, NULL, &db->fh);
+	if (res != TEE_SUCCESS) {
+		EMSG("Error 0x%x", res);
+		panic();
+	}
+
+	IMSG("read scp03.db");
+	res = db->ops->read(db->fh, 0, keys, &len);
+	if (res != TEE_SUCCESS) {
+		IMSG("read scp03.db failed");
+		panic();
+	}
+
+	if (len != sizeof(*keys)) {
+		IMSG("read scp03.db not enough data");
+		panic();
+	}
+
+	db->ops->close(&db->fh);
+	free(db);
+
+	return TEE_SUCCESS;
+}
 
 static sss_status_t encrypt_key_and_get_kcv(uint8_t *enc, uint8_t *kc,
 					    uint8_t *key, sss_se05x_ctx_t *ctx,
@@ -77,6 +199,9 @@ static sss_status_t encrypt_key_and_get_kcv(uint8_t *enc, uint8_t *kc,
 
 	sss_se05x_key_object_free(&ko);
 
+	/* SE050: BUG: these transient objects must be deleted */
+	Se05x_API_DeleteSecureObject(&ctx->session.s_ctx, id);
+
 	return kStatus_SSS_Success;
 }
 
@@ -104,9 +229,9 @@ static sss_status_t prepare_key_data(uint8_t *key, uint8_t *cmd,
 	return kStatus_SSS_Success;
 }
 
-sss_status_t se050_prepare_rotate_cmd(sss_se05x_ctx_t *ctx,
-				      struct s050_scp_rotate_cmd *cmd,
-				      struct se050_scp_key *keys)
+sss_status_t se050_scp03_prepare_rotate_cmd(sss_se05x_ctx_t *ctx,
+					    struct s050_scp_rotate_cmd *cmd,
+					    struct se050_scp_key *keys)
 
 {
 	sss_se05x_session_t *session = &ctx->session;
@@ -134,9 +259,6 @@ sss_status_t se050_prepare_rotate_cmd(sss_se05x_ctx_t *ctx,
 	kcv_len += 1;
 
 	for (i = 0; i < ARRAY_SIZE(key); i++) {
-		if (!key[i])
-			goto error;
-
 		status = se050_get_oid(kKeyObject_Mode_Transient, &oid);
 		if (status != kStatus_SSS_Success)
 			goto error;
@@ -161,4 +283,75 @@ error:
 	EMSG("error preparing scp03 rotation command");
 
 	return kStatus_SSS_Fail;
+}
+
+/*
+ * @param keys
+ *
+ * @return sss_status_t
+ */
+sss_status_t se050_scp03_get_keys(struct se050_scp_key *keys)
+{
+	struct tee_scp03db_dir *db = NULL;
+#if defined(CFG_CORE_SE05X_OEFID)
+	sss_status_t status = kStatus_SSS_Success;
+	uint32_t id = 0;
+
+	status = se050_get_id_from_ofid(CFG_CORE_SE05X_OEFID, &id);
+	if (status != kStatus_SSS_Success)
+		return status;
+
+	IMSG("scp03 current keys defaulting to OEFID");
+	memcpy(keys, &se050_default_keys[id], sizeof(*keys));
+#else
+#if defined(CFG_CORE_SE05X_SCP03_CURRENT_DEK)
+	/* read scp04 keys from config */
+	struct se050_scp_key current_keys = {
+		.dek = { CFG_CORE_SE05X_SCP03_CURRENT_DEK },
+		.mac = { CFG_CORE_SE05X_SCP03_CURRENT_MAC },
+		.enc = { CFG_CORE_SE05X_SCP03_CURRENT_ENC },
+	};
+
+	IMSG("scp03 current keys defaulting to CFG_ keys");
+	memcpy(keys, &current_keys, sizeof(*keys));
+#else
+	/* read scp03 from database: the filesystem has to be ready when
+	 * calling this function
+	 */
+	if (scp03db_read_keys(keys) != TEE_SUCCESS)
+		panic();
+#endif
+#endif
+	return kStatus_SSS_Success;
+}
+
+/*
+ * @param keys
+ *
+ * @return sss_status_t
+ */
+sss_status_t se050_scp03_put_keys(struct se050_scp_key *keys)
+{
+	TEE_Result res = TEE_SUCCESS;
+#if 1
+	/* Debug information to remove in release */
+	sss_status_t status = kStatus_SSS_Success;
+	struct se050_scp_key cur_keys = { 0 };
+
+	status = se050_scp03_get_keys(&cur_keys);
+	if (status != kStatus_SSS_Success) {
+		EMSG("failed to get the current scp03 keys");
+		return status;
+	}
+
+	IMSG("scp03 current keys (to be replaced):");
+	nLog_au8("scp03", 0xff, "dek: ", cur_keys.dek, sizeof(cur_keys.dek));
+	nLog_au8("scp03", 0xff, "mac: ", cur_keys.mac, sizeof(cur_keys.mac));
+	nLog_au8("scp03", 0xff, "enc: ", cur_keys.enc, sizeof(cur_keys.enc));
+#endif
+	res = scp03db_write_keys(keys);
+	if (res != TEE_SUCCESS)
+		return kStatus_SSS_Fail;
+
+	return kStatus_SSS_Success;
 }

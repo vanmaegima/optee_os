@@ -8,6 +8,7 @@
 #define SE050_UTILS_H_
 
 #include <se050.h>
+#include <tee_api_types.h>
 
 struct se050_scp_key {
 	uint8_t enc[16];
@@ -40,11 +41,15 @@ uint64_t se050_generate_private_key(uint32_t oid);
 void se050_signature_der2bin(uint8_t *p, size_t *p_len);
 sss_status_t se050_signature_bin2der(uint8_t *signature, size_t *signature_len,
 				     uint8_t *raw, size_t raw_len);
+
 void se050_refcount_init_ctx(uint8_t **cnt);
 int se050_refcount_final_ctx(uint8_t *cnt);
 
 void se050_display_board_info(sss_se05x_session_t *session);
-sss_status_t se050_prepare_rotate_cmd(sss_se05x_ctx_t *ctx,
-				      struct s050_scp_rotate_cmd *cmd,
-				      struct se050_scp_key *keys);
+
+sss_status_t se050_scp03_get_keys(struct se050_scp_key *keys);
+sss_status_t se050_scp03_put_keys(struct se050_scp_key *keys);
+sss_status_t se050_scp03_prepare_rotate_cmd(sss_se05x_ctx_t *ctx,
+					    struct s050_scp_rotate_cmd *cmd,
+					    struct se050_scp_key *keys);
 #endif /* SE050_UTILS_H_ */
