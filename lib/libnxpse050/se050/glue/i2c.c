@@ -67,6 +67,10 @@ ESESTATUS phPalEse_i2c_open_and_configure(pphPalEse_Config_t pConfig __unused)
 {
 	TEE_Result ret = TEE_ERROR_GENERIC;
 
+	/* once the trampoline has been loaded, keep it running */
+	if (transfer == &tee_i2c_transfer)
+		return ESESTATUS_SUCCESS;
+
 	/* start with the native OP-TEE driver */
 	transfer = &native_i2c_transfer;
 
