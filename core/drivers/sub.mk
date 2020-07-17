@@ -32,5 +32,6 @@ srcs-$(CFG_STPMIC1) += stpmic1.c
 srcs-$(CFG_BCM_HWRNG) += bcm_hwrng.c
 srcs-$(CFG_BCM_SOTP) += bcm_sotp.c
 srcs-$(CFG_BCM_GPIO) += bcm_gpio.c
+srcs-$(CFG_RNG_PTA) += rng_pta.c
 
 subdirs-y += crypto
