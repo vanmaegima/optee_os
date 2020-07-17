@@ -88,6 +88,10 @@ void crypto_authenc_final(void *ctx, uint32_t algo);
 void crypto_authenc_free_ctx(void *ctx, uint32_t algo);
 void crypto_authenc_copy_state(void *dst_ctx, void *src_ctx, uint32_t algo);
 
+#if defined(CFG_CORE_SE05X)
+TEE_Result crypto_enable_scp03(unsigned int rotate_keys);
+#endif
+
 /* Implementation-defined big numbers */
 
 /*

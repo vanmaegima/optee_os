@@ -6,6 +6,7 @@ cflags-y += -DT1oI2C_UM1225_SE050
 cflags-y += -DT1oI2C
 cflags-y += -DSSS_USE_FTR_FILE
 
+incdirs-y += .
 incdirs-y += ../adaptors/include
 incdirs-y += ../se050/glue/include
 incdirs-y += ../se050/simw-top/hostlib/hostLib/inc/
@@ -18,6 +19,7 @@ incdirs-y += ../se050/simw-top/sss/ex/inc/
 incdirs-y += ../se050/simw-top/sss/inc/
 incdirs-y += ../se050/simw-top/sss/port/default/
 
+srcs-y += scp03.c
 srcs-$(CFG_NXP_SE05X_HUK_DRV) += huk.c
 srcs-$(CFG_NXP_SE05X_RNG_DRV) += rng.c
 # Disabled not to slow down loading a TA (this operation over i2c is really
