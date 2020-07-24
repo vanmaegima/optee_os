@@ -1687,7 +1687,7 @@ TEE_Result TEE_AsymmetricSignDigest(TEE_OperationHandle operation,
 
 	if (operation == TEE_HANDLE_NULL ||
 	    (digest == NULL && digestLen != 0) ||
-	    signature == NULL || signatureLen == NULL)
+	    !signatureLen || (!signature && *signatureLen != 0))
 		TEE_Panic(0);
 	if (params == NULL && paramCount != 0)
 		TEE_Panic(0);
