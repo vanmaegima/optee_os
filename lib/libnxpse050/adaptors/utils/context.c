@@ -55,17 +55,23 @@ static TEE_Result se050_service_init(void)
 		panic();
 #endif
 	IMSG("se050 ready [scp03 off]");
-
 #if defined CFG_CORE_SE05X_SCP03_EARLY && CFG_CORE_SE05X_SCP03_EARLY
+	/*
+	 * Use keys in config or the default OFID to start the scp03 service
+	 * early. If the keys were already rotated and are kept in scp.db then
+	 * this will panic.
+	 */
 	if (se050_enable_scp03(se050_session) != kStatus_SSS_Success)
 		panic();
-	/* since we have scp03 enabled at this point, we could also
-	 * provision the new keys (they wont be in storage but provided
-	 * in config
+	/*
+	 * do not provision the keys unless there is guaranteed access to
+	 * trusted storage. This can be done once RPMB is accessible.
 	 */
+#if 0
 #if defined(CFG_CORE_SE05X_SCP03_PROVISION) && CFG_CORE_SE05X_SCP03_PROVISION
 	if (se050_rotate_scp03_keys(&se050_ctx) != kStatus_SSS_Success)
 		panic();
+#endif
 #endif
 #endif
 	return TEE_SUCCESS;
