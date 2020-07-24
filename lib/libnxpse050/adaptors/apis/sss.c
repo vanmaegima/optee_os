@@ -4,6 +4,7 @@
  * Author: Jorge Ramirez <jorge@foundries.io>
  */
 
+#include <kernel/panic.h>
 #include <se050.h>
 #include <se050_utils.h>
 #include <string.h>
@@ -63,20 +64,22 @@ sss_status_t se050_rotate_scp03_keys(sss_se05x_ctx_t *ctx)
 {
 	struct s050_scp_rotate_cmd cmd = { 0 };
 	sss_status_t status = kStatus_SSS_Fail;
+	struct se050_scp_key cur_keys = { 0 };
+	struct se050_scp_key new_keys = { 0 };
 	SE_Connect_Ctx_t *connect_ctx = NULL;
 	sss_se05x_session_t *session = NULL;
 
-#if defined(CFG_CORE_SE05X_SCP03_NEW_DEK)
-	/* read scp03 keys from config */
-	struct se050_scp_key new_keys = {
-		.dek = { CFG_CORE_SE05X_SCP03_NEW_DEK },
-		.mac = { CFG_CORE_SE05X_SCP03_NEW_MAC },
-		.enc = { CFG_CORE_SE05X_SCP03_NEW_ENC },
-	};
-	IMSG("scp03 new keys read from CFG_");
-#else
-	/* generate scp03 keys from random */
-	struct se050_scp_key new_keys = { 0 };
+#if defined CFG_CORE_SE05X_SCP03_EARLY && CFG_CORE_SE05X_SCP03_EARLY
+	/* if SCP03 was enabled during early boot, we wont be able to read
+	 * the keys from storage once they are rotated and written as the
+	 * filesystem is not ready so early.
+	 *
+	 * Therefore disable scp03 key rotation.
+	 */
+	return kStatus_SSS_Fail;
+#endif
+	if (!ctx)
+		return kStatus_SSS_Fail;
 
 	if (crypto_rng_read(new_keys.dek, sizeof(new_keys.dek)) != TEE_SUCCESS)
 		return kStatus_SSS_Fail;
@@ -88,20 +91,22 @@ sss_status_t se050_rotate_scp03_keys(sss_se05x_ctx_t *ctx)
 		return kStatus_SSS_Fail;
 
 	IMSG("write new scp03 keys to secure storage");
-	status = se050_scp03_put_keys(&new_keys);
-	if (status != kStatus_SSS_Success)
+	status = se050_scp03_put_keys(&new_keys, &cur_keys);
+	if (status != kStatus_SSS_Success) {
+		EMSG("scp03 keys not updated");
 		return status;
-	IMSG("write ok");
-#endif
-	if (!ctx)
-		return kStatus_SSS_Fail;
+	}
+
+	IMSG("scp03 keys updated in secure storage");
 
 	connect_ctx = &ctx->open_ctx;
 	session = &ctx->session;
 
 	status = se050_scp03_prepare_rotate_cmd(ctx, &cmd, &new_keys);
-	if (status != kStatus_SSS_Success)
-		return status;
+	if (status != kStatus_SSS_Success) {
+		EMSG("scp03.db keys corrupted, attempt restore");
+		goto restore;
+	}
 
 	sss_se05x_refresh_session(se050_session, NULL);
 	sss_se05x_session_close(session);
@@ -111,45 +116,36 @@ sss_status_t se050_rotate_scp03_keys(sss_se05x_ctx_t *ctx)
 	status = sss_se05x_session_open(session, kType_SSS_SE_SE05x, 0,
 					kSSS_ConnectionType_Encrypted,
 					connect_ctx);
-	if (status != kStatus_SSS_Success)
-		return status;
+	if (status != kStatus_SSS_Success) {
+		EMSG("scp03.db keys corrupted, attempt restore");
+		goto restore;
+	}
 
 	IMSG("write scp03 keys to se050");
 	status = se050_scp03_send_rotate_cmd(&session->s_ctx, &cmd);
-	if (status != kStatus_SSS_Success)
-		return status;
+	if (status != kStatus_SSS_Success) {
+		EMSG("scp03.db keys corrupted, attempt restore");
+		goto restore;
+	}
 	IMSG("write ok");
 
 	sss_host_session_close(&ctx->host_session);
 	sss_se05x_session_close(se050_session);
 	memset(ctx, 0, sizeof(*ctx));
 
-#if defined(CFG_CORE_SE05X_SCP03_NEW_DEK)
-	/* manual reboot sinc the new keys must be provided via CFG_ on a new
-	 * image (ie, running a software upgrade will be required with the
-	 * new keys)
-	 */
-	IMSG("install the new image with the scp03 keys in CFG and boot it");
-	IMSG("looping.....");
-	while (true)
-		;
-#else
-	if (se050_core_service_init(&new_keys) != TEE_SUCCESS)
-		EMSG("error restarting the service");
+	if (se050_core_service_init(&new_keys) != TEE_SUCCESS) {
+		EMSG("se050 down");
+		panic();
+	} else {
+		IMSG("se050 ready [scp03 on]");
+	}
 
-#if defined(CFG_CORE_SE05X_SCP03_CURRENT_DEK)
-	/* the current keys are now in secure storage and the info in the
-	 * configuration variables are no longer valid. Unless the system
-	 * is rebuilt removing them and the new bootloader flashed, we wont be
-	 * able to enable scp03.
-	 * During the upgrade be careful not to remove the secure storage.
-	 */
-	IMSG("WARN: undefine the scp03 current keys and reflash the new "
-	     "bootloader (only the bootloader) before the next reboot");
-#endif
-
-	IMSG("se050 ready [scp03 on]");
-#endif
+	return status;
+restore:
+	if (se050_scp03_put_keys(&cur_keys, NULL) != kStatus_SSS_Success)
+		EMSG("scp03.db keys corrupted!!");
+	else
+		IMSG("scp03.db restored");
 
 	return status;
 }
