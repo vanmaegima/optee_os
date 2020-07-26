@@ -9,16 +9,6 @@
 #include <se050.h>
 #include <string.h>
 
-TEE_Result crypto_aes_expand_enc_key(const void *key, size_t key_len,
-				     void *enc_key, size_t enc_keylen,
-				     unsigned int *rounds)
-{
-	EMSG("**************************");
-	EMSG("*    AES EXPAND (ERROR!) *");
-	EMSG("**************************");
-	return TEE_ERROR_GENERIC;
-}
-
 void crypto_aes_enc_block(const void *enc_key, size_t enc_keylen,
 			  unsigned int rounds, const void *src, void *dst)
 {
