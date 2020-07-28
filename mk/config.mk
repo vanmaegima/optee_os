@@ -517,6 +517,8 @@ CFG_CORE_SE05X ?= n
 ifeq ($(CFG_CRYPTOLIB_NAME),tomcrypt)
 ifneq ($(CFG_CORE_SE05X), y)
 CFG_CRYPTO_RSASSA_NA1 ?= y
+else
+CFG_WITH_SOFTWARE_PRNG = n
 endif
 CFG_CORE_MBEDTLS_MPI ?= y
 endif
