@@ -106,19 +106,16 @@ TEE_Result crypto_hmac_md5_alloc_ctx(struct crypto_mac_ctx **ctx)
 	return ltc_hmac_alloc_ctx(ctx, find_hash("md5"));
 }
 
-#if !defined(CFG_CORE_SE05X)
 TEE_Result crypto_hmac_sha1_alloc_ctx(struct crypto_mac_ctx **ctx)
 {
 	return ltc_hmac_alloc_ctx(ctx, find_hash("sha1"));
 }
-# endif
 
 TEE_Result crypto_hmac_sha224_alloc_ctx(struct crypto_mac_ctx **ctx)
 {
 	return ltc_hmac_alloc_ctx(ctx, find_hash("sha224"));
 }
 
-#if !defined(CFG_CORE_SE05X)
 TEE_Result crypto_hmac_sha256_alloc_ctx(struct crypto_mac_ctx **ctx)
 {
 	return ltc_hmac_alloc_ctx(ctx, find_hash("sha256"));
@@ -133,4 +130,3 @@ TEE_Result crypto_hmac_sha512_alloc_ctx(struct crypto_mac_ctx **ctx)
 {
 	return ltc_hmac_alloc_ctx(ctx, find_hash("sha512"));
 }
-#endif

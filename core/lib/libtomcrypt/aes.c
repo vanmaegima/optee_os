@@ -25,7 +25,7 @@ TEE_Result crypto_aes_expand_enc_key(const void *key, size_t key_len,
 	*rounds = skey.rijndael.Nr;
 	return TEE_SUCCESS;
 }
-#if !defined(CFG_CORE_SE05X)
+
 void crypto_aes_enc_block(const void *enc_key, size_t enc_keylen __maybe_unused,
 			  unsigned int rounds, const void *src, void *dst)
 {
@@ -37,4 +37,3 @@ void crypto_aes_enc_block(const void *enc_key, size_t enc_keylen __maybe_unused,
 	if (aes_ecb_encrypt(src, dst, &skey))
 		panic();
 }
-#endif
