@@ -322,6 +322,13 @@ TEE_Result crypto_acipher_ecc_sign(uint32_t algo, struct ecc_keypair *key,
 	if (res != TEE_SUCCESS)
 		goto exit;
 
+	/* se050 exports DER format */
+	if (*sig_len < (2 * key_bytes + DER_SIGNATURE)) {
+		*sig_len = 2 * key_bytes + DER_SIGNATURE;
+		res = TEE_ERROR_SHORT_BUFFER;
+		goto exit;
+	}
+
 	res = ecc_get_msg_size(algo_tee2se050(algo), &msg_len);
 	if (res != TEE_SUCCESS)
 		goto exit;
