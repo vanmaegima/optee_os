@@ -263,6 +263,11 @@ TEE_Result crypto_acipher_rsaes_encrypt(uint32_t algo,
 	sss_se05x_object_t kobject = { 0 };
 	TEE_Result res = TEE_SUCCESS;
 
+	if (*dst_len < crypto_bignum_num_bytes(key->n)) {
+		*dst_len = crypto_bignum_num_bytes(key->n);
+		return TEE_ERROR_SHORT_BUFFER;
+	}
+
 	res = se050_inject_public_key(&kobject, key);
 	if (res != TEE_SUCCESS)
 		return TEE_ERROR_BAD_PARAMETERS;
@@ -456,6 +461,11 @@ TEE_Result crypto_acipher_rsassa_sign(uint32_t algo, struct rsa_keypair *key,
 	sss_se05x_asymmetric_t ctx = { 0 };
 	sss_se05x_object_t kobject = { 0 };
 	TEE_Result res = TEE_SUCCESS;
+
+	if (*sig_len < crypto_bignum_num_bytes(key->n)) {
+		*sig_len = crypto_bignum_num_bytes(key->n);
+		return TEE_ERROR_SHORT_BUFFER;
+	}
 
 	res = se050_inject_keypair(&kobject, key);
 	if (res != TEE_SUCCESS)
