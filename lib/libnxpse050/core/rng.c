@@ -8,6 +8,7 @@
 #include <kernel/panic.h>
 #include <rng_support.h>
 #include <se050.h>
+#include <tee/tee_cryp_utl.h>
 
 static TEE_Result do_rng_read(void *buf, size_t blen)
 {

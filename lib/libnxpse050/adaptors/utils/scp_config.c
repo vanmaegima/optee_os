@@ -41,6 +41,7 @@ static struct tee_pobj po = {
 	.obj_id = (void *)scp03db_obj_id,
 };
 
+static TEE_Result scp03db_delete_keys(void)__unused;
 static TEE_Result scp03db_delete_keys(void)
 {
 	struct tee_scp03db_dir *db = calloc(1, sizeof(struct tee_scp03db_dir));
@@ -241,9 +242,7 @@ sss_status_t se050_scp03_prepare_rotate_cmd(sss_se05x_ctx_t *ctx,
 					    struct se050_scp_key *keys)
 
 {
-	sss_se05x_session_t *session = &ctx->session;
 	sss_status_t status = kStatus_SSS_Fail;
-	smStatus_t st = SM_NOT_OK;
 	size_t kcv_len = 0;
 	size_t cmd_len = 0;
 	uint8_t key_version = 0;
@@ -330,7 +329,7 @@ static sss_status_t get_db_key(struct se050_scp_key *keys)
 	return kStatus_SSS_Fail;
 }
 
-static sss_status_t get_config_key(struct se050_scp_key *keys)
+static sss_status_t get_config_key(struct se050_scp_key *keys __unused)
 {
 #ifdef CFG_CORE_SE05X_SCP03_CURRENT_DEK
 	struct se050_scp_key current_keys = {

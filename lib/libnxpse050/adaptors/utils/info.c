@@ -26,12 +26,12 @@
 #define LOG_MAU8_E(msg, buf, len) \
 nLog_au8("Info", NX_LEVEL_ERROR, msg, buf, len)
 
-sss_status_t jcop4_get_id(void *ctx)
+static sss_status_t jcop4_get_id(void *ctx)
 {
 	sss_status_t status = kStatus_SSS_Fail;
 	char jcop_platform_id[17] = { 0 };
 	smStatus_t ret = SM_OK;
-	const uint8_t cmd[] = {
+	unsigned char cmd[] = {
 		0x80, /* CLA '80' / '00' GlobalPlatform / ISO / IEC	*/
 		0xCA, /* INS 'CA' GET DATA(IDENTIFY)			*/
 		0x00, /* P1 '00' High order tag value			*/
@@ -149,7 +149,7 @@ static void show_config(uint16_t cfg)
 		ITEM(HMAC), ITEM(RSA_PLAIN), ITEM(RSA_CRT), ITEM(AES),
 		ITEM(DES), ITEM(PBKDF), ITEM(TLS), ITEM(MIFARE), ITEM(I2CM),
 	};
-	int i = 0;
+	size_t i = 0;
 
 	for (i = 0; i < ARRAY_SIZE(features); i++) {
 		LOG_I("\t%s%s", cfg & features[i].val ? "with\t" : "without\t",

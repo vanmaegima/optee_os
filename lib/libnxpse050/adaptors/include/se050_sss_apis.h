@@ -25,7 +25,7 @@ typedef struct {
 		NXSCP03_StaticCtx_t static_ctx;
 		NXSCP03_DynCtx_t dynamic_ctx;
 	} se05x_auth;
-	sss_session_t host_session;
+	sss_user_impl_session_t host_session;
 	sss_key_store_t host_ks;
 } sss_se05x_ctx_t;
 

@@ -7,6 +7,7 @@
 #include <nxScp03_Apis.h>
 #include <se050_user_apis.h>
 #include <se050_utils.h>
+#include <string.h>
 
 /*
  * @param k_object

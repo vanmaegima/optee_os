@@ -6,6 +6,7 @@
 
 #include <crypto/crypto.h>
 #include <se050.h>
+#include <string.h>
 
 /* base value for secure objects (transient and persistent) */
 #define OID_MIN			((uint32_t)(0x00000001))
@@ -18,7 +19,7 @@ static uint32_t generate_oid(void)
 {
 	uint32_t oid = OID_MIN;
 	uint32_t random = 0;
-	int i = 0;
+	size_t i = 0;
 
 	for (i = 0; i < NBR_OID; i++) {
 		if (crypto_rng_read(&random, sizeof(random)) != TEE_SUCCESS)
@@ -70,7 +71,7 @@ sss_status_t se050_get_oid(sss_key_object_mode_t mode, uint32_t *val)
 		return kStatus_SSS_Fail;
 	}
 
-	if (type == kKeyObject_Mode_Persistent) {
+	if (type == kSE05x_MemoryType_PERSISTENT) {
 		IMSG("allocated persistent object: 0x%x", oid);
 		if (mem && mem < 100)
 			IMSG("WARNING, low persistent memory");
@@ -193,7 +194,7 @@ sss_status_t se050_signature_bin2der(uint8_t *signature, size_t *signature_len,
 	}
 
 	if (raw_len != 48 && raw_len != 56 && raw_len != 64 && raw_len != 96) {
-		EMSG("ECDAA Invalid length in bin signature %d", raw_len);
+		EMSG("ECDAA Invalid length in bin signature %ld", raw_len);
 		return kStatus_SSS_Fail;
 	}
 

@@ -27,7 +27,7 @@
 #define SE050C2 5
 #define SE050DV 6
 
-sss_status_t se050_get_id_from_ofid(uint32_t ofid, uint32_t *id)
+static inline sss_status_t se050_get_id_from_ofid(uint32_t ofid, uint32_t *id)
 {
 	sss_status_t status = kStatus_SSS_Success;
 

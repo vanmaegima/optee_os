@@ -140,19 +140,19 @@ static TEE_Result ecc_get_msg_size(uint32_t algo, size_t *len)
 {
 	switch (algo) {
 	case kAlgorithm_SSS_ECDSA_SHA1:
-		*len = MIN(TEE_SHA1_HASH_SIZE, *len);
+		*len = MIN((size_t)TEE_SHA1_HASH_SIZE, *len);
 		break;
 	case kAlgorithm_SSS_ECDSA_SHA224:
-		*len = MIN(TEE_SHA224_HASH_SIZE, *len);
+		*len = MIN((size_t)TEE_SHA224_HASH_SIZE, *len);
 		break;
 	case kAlgorithm_SSS_ECDSA_SHA256:
-		*len = MIN(TEE_SHA256_HASH_SIZE, *len);
+		*len = MIN((size_t)TEE_SHA256_HASH_SIZE, *len);
 		break;
 	case kAlgorithm_SSS_ECDSA_SHA384:
-		*len = MIN(TEE_SHA384_HASH_SIZE, *len);
+		*len = MIN((size_t)TEE_SHA384_HASH_SIZE, *len);
 		break;
 	case kAlgorithm_SSS_ECDSA_SHA512:
-		*len = MIN(TEE_SHA512_HASH_SIZE, *len);
+		*len = MIN((size_t)TEE_SHA512_HASH_SIZE, *len);
 		break;
 	default:
 		EMSG("invalid se050 0x%x algorithm", algo);
@@ -488,7 +488,7 @@ TEE_Result crypto_acipher_ecc_shared_secret(struct ecc_keypair *private_key,
 	TEE_Result ret = TEE_SUCCESS;
 	size_t key_bits = 0, key_bytes = 0;
 	size_t x1_len = 0, y1_len = 0;
-	size_t x2_len = 0, y2_len = 0;
+	size_t x2_len = 0,  y2_len __unused = 0;
 	uint32_t kid = 0;
 
 	if (private_key->curve != public_key->curve)

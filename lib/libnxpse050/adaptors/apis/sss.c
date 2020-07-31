@@ -4,6 +4,7 @@
  * Author: Jorge Ramirez <jorge@foundries.io>
  */
 
+#include <crypto/crypto.h>
 #include <kernel/panic.h>
 #include <se050.h>
 #include <se050_utils.h>

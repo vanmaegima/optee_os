@@ -31,12 +31,12 @@ static struct se050_aes_ctr_ctx *to_aes_ctr_ctx(struct crypto_cipher_ctx *ctx)
 }
 
 static TEE_Result se050_aes_ctr_init(struct crypto_cipher_ctx *ctx,
-				     TEE_OperationMode mode,
+				     TEE_OperationMode mode __unused,
 				     const uint8_t *key1,
 				     size_t key1_len,
 				     const uint8_t *key2 __unused,
 				     size_t key2_len __unused,
-				     const uint8_t *iv, size_t iv_len)
+				     const uint8_t *iv, size_t iv_len __unused)
 {
 	struct se050_aes_ctr_ctx *c = to_aes_ctr_ctx(ctx);
 	sss_status_t st = kStatus_SSS_Success;

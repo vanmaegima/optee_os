@@ -7,10 +7,6 @@
  */
 
 #include <fsl_sss_api.h>
-#ifdef ARRAY_SIZE
-#undef ARRAY_SIZE
-#endif
-
 #include <kernel/delay.h>
 #include <nxLog.h>
 #include <printk.h>
