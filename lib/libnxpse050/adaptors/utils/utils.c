@@ -8,6 +8,8 @@
 #include <se050.h>
 #include <string.h>
 
+#define BIT(nr) (1UL << (nr))
+
 /* base value for secure objects (transient and persistent) */
 #define OID_MIN			((uint32_t)(0x00000001))
 #define OID_MAX			((uint32_t)(OID_MIN + 0x7BFFFFFE))
@@ -15,7 +17,66 @@
 
 #define IS_WATERMARKED(x)	(((x) & WATERMARKED(0)) == WATERMARKED(0))
 
-static uint32_t generate_oid(void)
+static void delete_transient_objects(void)
+{
+	Se05xSession_t *ctx = NULL;
+	uint8_t more = kSE05x_MoreIndicator_NA;
+	uint8_t *list = NULL;
+	size_t len = 1024;
+	smStatus_t status  = SM_NOT_OK;
+	uint16_t offset = 0;
+	uint32_t id = 0;
+	size_t nbr_pobj = 0, nbr_tobj = 0;
+	size_t i = 0;
+
+	if (!se050_session)
+		return;
+
+	ctx = &se050_session->s_ctx;
+
+	list = calloc(1, len);
+	if (!list)
+		return;
+	do {
+		status = Se05x_API_ReadIDList(ctx, offset, 0xFF, &more,
+					      list, &len);
+		if (status != SM_OK) {
+			free(list);
+			return;
+		}
+
+		offset = len;
+		for (i = 0; i < len; i += 4) {
+			id = (list[i + 0] << (3 * 8)) |
+			     (list[i + 1] << (2 * 8)) |
+			     (list[i + 2] << (1 * 8)) |
+			     (list[i + 3] << (0 * 8));
+
+			if (id >= OID_MAX || id == 0)
+				continue;
+
+			/* delete only transient objects */
+			if (id & BIT(0)) {
+				status = Se05x_API_DeleteSecureObject(ctx, id);
+				if (status != SM_OK) {
+					EMSG("Error erasing 0x%x", id);
+				} else {
+					nbr_tobj++;
+					DMSG("Erased 0x%x", id);
+				}
+			} else {
+				nbr_pobj++;
+			}
+		}
+	} while (more == kSE05x_MoreIndicator_MORE);
+
+	DMSG("Permanent objects in store %ld", nbr_pobj);
+	IMSG("Transient objects deleted  %ld", nbr_tobj);
+
+	free(list);
+}
+
+static uint32_t generate_oid(sss_key_object_mode_t mode)
 {
 	uint32_t oid = OID_MIN;
 	uint32_t random = 0;
@@ -30,6 +91,11 @@ static uint32_t generate_oid(void)
 		oid = OID_MIN + random;
 		if (oid > OID_MAX)
 			continue;
+
+		if (mode == kKeyObject_Mode_Transient)
+			oid |= BIT(0);
+		else
+			oid &= ~BIT(0);
 
 		if (!se050_key_exists(oid, &se050_session->s_ctx))
 			return oid;
@@ -47,38 +113,47 @@ static uint32_t generate_oid(void)
  */
 sss_status_t se050_get_oid(sss_key_object_mode_t mode, uint32_t *val)
 {
-	SE05x_MemoryType_t type = kSE05x_MemoryType_PERSISTENT;
 	sss_status_t status = kStatus_SSS_Success;
-	uint16_t mem = 0;
+	uint16_t mem_t = 0, mem_p = 0;
 	uint32_t oid = 0;
 
 	if (!val)
 		return kStatus_SSS_Fail;
 
-	if (mode == kKeyObject_Mode_Transient)
-		type = kSE05x_MemoryType_TRANSIENT_RESET;
-
-	status = se050_get_free_memory(&se050_session->s_ctx, &mem, type);
+	status = se050_get_free_memory(&se050_session->s_ctx, &mem_t,
+				       kSE05x_MemoryType_TRANSIENT_DESELECT);
 	if (status != kStatus_SSS_Success) {
-		mem = 0;
-		EMSG("failure retrieving free memory");
+		mem_t = 0;
+		EMSG("failure retrieving transient free memory");
 		return kStatus_SSS_Fail;
 	}
 
-	oid = generate_oid();
+	status = se050_get_free_memory(&se050_session->s_ctx, &mem_p,
+				       kSE05x_MemoryType_PERSISTENT);
+	if (status != kStatus_SSS_Success) {
+		mem_p = 0;
+		EMSG("failure retrieving persistent free memory");
+		return kStatus_SSS_Fail;
+	}
+
+	/*
+	 * rsa: when the ammount of memory falls below these
+	 * thresholds, we can no longer store RSA 2048 keys in the SE050
+	 * meaning that we can no longer open a TA.
+	 *
+	 */
+	if (mem_t < 0x140) {
+		IMSG("low memory threshold hit, releasing transient memory");
+		IMSG("free mem persistent 0x%x, transient 0x%x", mem_p, mem_t);
+		delete_transient_objects();
+	}
+
+	oid = generate_oid(mode);
 	if (!oid) {
 		EMSG("cant access rng");
 		return kStatus_SSS_Fail;
 	}
 
-	if (type == kSE05x_MemoryType_PERSISTENT) {
-		IMSG("allocated persistent object: 0x%x", oid);
-		if (mem && mem < 100)
-			IMSG("WARNING, low persistent memory");
-	} else {
-		if (mem && mem < 100)
-			IMSG("WARNING, low transient memory");
-	}
 
 	*val = oid;
 
