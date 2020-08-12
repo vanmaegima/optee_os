@@ -36,3 +36,4 @@ srcs-$(CFG_RNG_PTA) += rng_pta.c
 srcs-$(CFG_CORE_SE05X) += scp03_pta.c
 
 subdirs-y += crypto
+subdirs-y += imx
