@@ -11,7 +11,7 @@
 #include <kernel/mutex.h>
 #include <kernel/spinlock.h>
 #ifdef CFG_DT
-#include <kernel/boot.h>
+#include <kernel/generic_boot.h>
 #include <kernel/dt.h>
 #include <libfdt.h>
 #endif
