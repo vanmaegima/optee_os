@@ -33,6 +33,7 @@ srcs-$(CFG_BCM_HWRNG) += bcm_hwrng.c
 srcs-$(CFG_BCM_SOTP) += bcm_sotp.c
 srcs-$(CFG_BCM_GPIO) += bcm_gpio.c
 srcs-$(CFG_RNG_PTA) += rng_pta.c
+srcs-$(CFG_CORE_SE05X) += scp03_pta.c
 
 subdirs-y += crypto
 subdirs-$(CFG_BNXT_FW) += bnxt
