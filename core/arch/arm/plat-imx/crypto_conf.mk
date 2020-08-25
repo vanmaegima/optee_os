@@ -46,8 +46,10 @@ $(call force, CFG_NXP_CAAM_RUNTIME_JR, y)
 #
 # Definition of all HW accelerations for all i.MX
 #
-$(call force, CFG_NXP_CAAM_RNG_DRV, y)
-$(call force, CFG_WITH_SOFTWARE_PRNG,n)
+CFG_NXP_CAAM_RNG_DRV ?= y
+ifeq ($(CFG_NXP_CAAM_RNG_DRV), y)
+$(call force, CFG_WITH_SOFTWARE_PRNG, n)
+endif
 
 # Force to 'y' the CFG_NXP_CAAM_xxx_DRV to enable the CAAM HW driver
 # and enable the associated CFG_CRYPTO_DRV_xxx Crypto driver
