@@ -201,7 +201,7 @@ __weak int imx7ulp_cpu_suspend(uint32_t power_state __unused,
 	return 0;
 }
 
-__weak void imx7ulp_lowpower_idle(void)
+__weak void __noreturn imx7ulp_lowpower_idle(void)
 {
 	psci_system_off();
 }
