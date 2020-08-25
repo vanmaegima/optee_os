@@ -8,11 +8,10 @@
 #include <io.h>
 #include <imx_pm.h>
 #include <imx.h>
-#include <kernel/generic_boot.h>
+#include <kernel/boot.h>
 #include <kernel/misc.h>
 #include <kernel/panic.h>
 #include <kernel/interrupt.h>
-#include <kernel/pm_stubs.h>
 #include <kernel/cache_helpers.h>
 #include <mm/core_mmu.h>
 #include <mm/core_memprot.h>
@@ -387,8 +386,6 @@ int imx7ulp_cpu_suspend(uint32_t power_state __unused, uintptr_t entry,
 		DMSG(".. sm_pm_cpu_suspend (ret=%d) GPCIRQ Pending! \n", ret);
 		return 0;
 	}
-
-	plat_cpu_reset_late();
 
 	/* Restore register of different mode in secure world */
 	sm_restore_unbanked_regs(&nsec->ub_regs);
