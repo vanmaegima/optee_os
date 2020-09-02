@@ -255,7 +255,7 @@ static enum itr_return nmi_itr_cb(__attribute__((unused)) struct itr_handler *h)
 {
 	return ITRR_HANDLED;
 }
-KEEP_PAGER(nmi_itr_cb);
+DECLARE_KEEP_PAGER(nmi_itr_cb);
 
 static struct itr_handler itr;
 
