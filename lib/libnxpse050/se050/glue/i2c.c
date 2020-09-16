@@ -39,6 +39,7 @@ static int i2c_transfer(uint8_t *buffer, int len, enum rpc_i2c_mode mode)
 		.buffer = buffer,
 		.buffer_len = len,
 		.flags = 0,
+		.retries = 20,
 	};
 	size_t bytes = 0;
 	int retry = 5;
@@ -46,7 +47,7 @@ static int i2c_transfer(uint8_t *buffer, int len, enum rpc_i2c_mode mode)
 	do {
 		if ((*transfer)(&request, &bytes) == TEE_SUCCESS)
 			return bytes;
-	} while (--retry);
+	} while (--retry && (transfer != &rpc_io_i2c_transfer));
 
 	return -1;
 }
