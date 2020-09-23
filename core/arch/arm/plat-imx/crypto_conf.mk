@@ -40,11 +40,7 @@ $(call force, CFG_NXP_CAAM_RUNTIME_JR, y)
 #
 # Definition of all HW accelerations for all i.MX
 #
-ifeq ($(CFG_CORE_SE05X), y)
-$(call force, CFG_NXP_CAAM_RNG_DRV, n)
-else
-$(call force, CFG_NXP_CAAM_RNG_DRV, y)
-endif
+CFG_NXP_CAAM_RNG_DRV ?= y
 
 CFG_WITH_SOFTWARE_PRNG = n
 
