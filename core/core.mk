@@ -92,7 +92,6 @@ ifeq ($(CFG_CORE_SE05X), y)
 CFG_CORE_SE05X_I2C_BUS ?= 0x2
 CFG_CORE_SE05X_BAUDRATE ?= 3400000
 CFG_CORE_SE05X_INIT_NVM ?= 0
-$(call force, CFG_CRYPTO_RSASSA_NA1, n, not supported by se050)
 $(call force, CFG_NXP_SE05X_SVC, y)
 $(call force, CFG_NXP_SE05X_HMAC_DRV, y)
 $(call force, CFG_NXP_SE05X_RNG_DRV, y)
