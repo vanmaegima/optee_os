@@ -16,6 +16,13 @@
 
 #define I2C_CLK_RATE	24000000 /* Bits per second */
 
+/* SoC optional iomuxc daisy configuration register */
+#ifndef I2C_INP_SCL
+#define I2C_INP_SCL(__x) 0
+#define I2C_INP_SDA(__x) 0
+#define I2C_INP_VAL(__x) 0
+#endif
+
 static struct io_pa_va i2c_bus[] = {
 	{ .pa = I2C1_BASE, },
 	{ .pa = I2C2_BASE, },
@@ -35,17 +42,22 @@ static struct imx_i2c_mux {
 	struct imx_i2c_mux_regs {
 		uint32_t scl_mux;
 		uint32_t scl_cfg;
+		uint32_t scl_inp;
 		uint32_t sda_mux;
 		uint32_t sda_cfg;
+		uint32_t sda_inp;
 	} i2c[ARRAY_SIZE(i2c_bus)];
 } i2c_mux = {
 	.base.pa = IOMUXC_BASE,
 	.i2c = {{ .scl_mux = I2C_MUX_SCL(1), .scl_cfg = I2C_CFG_SCL(1),
-		.sda_mux = I2C_MUX_SDA(1), .sda_cfg = I2C_CFG_SDA(1), },
-	       { .scl_mux = I2C_MUX_SCL(2), .scl_cfg = I2C_CFG_SCL(2),
-		.sda_mux = I2C_MUX_SDA(2), .sda_cfg = I2C_CFG_SDA(2), },
-	       { .scl_mux = I2C_MUX_SCL(3), .scl_cfg = I2C_CFG_SCL(3),
-		.sda_mux = I2C_MUX_SDA(3), .sda_cfg = I2C_CFG_SDA(3), },},
+		.scl_inp = I2C_INP_SCL(1), .sda_mux = I2C_MUX_SDA(1),
+		.sda_cfg = I2C_CFG_SDA(1), .sda_inp = I2C_INP_SDA(1), },
+		{ .scl_mux = I2C_MUX_SCL(2), .scl_cfg = I2C_CFG_SCL(2),
+		.scl_inp = I2C_INP_SCL(2), .sda_mux = I2C_MUX_SDA(2),
+		.sda_cfg = I2C_CFG_SDA(2), .sda_inp = I2C_INP_SDA(2), },
+		{ .scl_mux = I2C_MUX_SCL(3), .scl_cfg = I2C_CFG_SCL(3),
+		.scl_inp = I2C_INP_SCL(3), .sda_mux = I2C_MUX_SDA(3),
+		.sda_cfg = I2C_CFG_SDA(3), .sda_inp = I2C_INP_SDA(3), },},
 };
 
 #define I2DR				0x10
@@ -132,10 +144,28 @@ static void i2c_set_prescaler(uint8_t bid, uint32_t bps)
 
 static void i2c_set_bus_speed(uint8_t bid, int bps)
 {
-	/* Enable the clock */
-	io_write32(i2c_clk.base.va + CCM_CCGRx_SET(i2c_clk.i2c[bid]),
-		   CCM_CCGRx_ALWAYS_ON(0));
+	vaddr_t addr = i2c_clk.base.va;
+	uint32_t val = 0;
 
+#if defined(CFG_MX8MM)
+	addr += CCM_CCGRx_SET(i2c_clk.i2c[bid]);
+	val = CCM_CCGRx_ALWAYS_ON(0);
+#elif defined(CFG_MX6ULL)
+	switch (bid) {
+	case 0:
+		val = BM_CCM_CCGR2_I2C1_SERIAL;
+		break;
+	case 1:
+		val = BM_CCM_CCGR2_I2C2_SERIAL;
+		break;
+	default:
+		val = BM_CCM_CCGR2_I2C3_SERIAL;
+		break;
+	}
+	addr += i2c_clk.i2c[bid];
+	val |= io_read32(addr);
+#endif
+	io_write32(addr, val);
 	i2c_set_prescaler(bid, bps);
 }
 
@@ -350,8 +380,15 @@ TEE_Result imx_i2c_init(uint8_t bid, int bps)
 
 	io_write32(mux->base.va + mux->i2c[bid].scl_mux, I2C_MUX_VAL(bid));
 	io_write32(mux->base.va + mux->i2c[bid].scl_cfg, I2C_CFG_VAL(bid));
+	if (mux->i2c[bid].scl_inp)
+		io_write32(mux->base.va + mux->i2c[bid].scl_inp,
+			   I2C_INP_VAL(mux->i2c[bid].scl_inp));
+
 	io_write32(mux->base.va + mux->i2c[bid].sda_mux, I2C_MUX_VAL(bid));
 	io_write32(mux->base.va + mux->i2c[bid].sda_cfg, I2C_CFG_VAL(bid));
+	if (mux->i2c[bid].sda_inp)
+		io_write32(mux->base.va + mux->i2c[bid].sda_inp,
+			   I2C_INP_VAL(mux->i2c[bid].sda_inp));
 
 	/* Baud rate in bits per second */
 	i2c_set_bus_speed(bid, bps);
