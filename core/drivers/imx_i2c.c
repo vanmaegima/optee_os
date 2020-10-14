@@ -14,7 +14,7 @@
 #include <trace.h>
 #include <util.h>
 
-#define I2C_CLK_RATE	24000000 /* Bits per second */
+#define I2C_CLK_RATE	CFG_IMX_I2C_CLK_RATE
 
 /* SoC optional iomuxc daisy configuration register */
 #ifndef I2C_INP_SCL

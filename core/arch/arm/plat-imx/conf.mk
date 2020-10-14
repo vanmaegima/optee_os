@@ -152,6 +152,8 @@ CFG_TEE_CORE_NB_CORE ?= 4
 else ifneq (,$(filter $(PLATFORM_FLAVOR),$(mx8mm-flavorlist)))
 $(call force,CFG_MX8MM,y)
 $(call force,CFG_ARM64_core,y)
+CFG_IMX_I2C ?= n
+CFG_IMX_I2C_CLK_RATE ?= 24000000
 CFG_IMX_UART ?= y
 CFG_DRAM_BASE ?= 0x40000000
 CFG_TEE_CORE_NB_CORE ?= 4
@@ -178,6 +180,11 @@ CFG_TEE_CORE_NB_CORE ?= 4
 $(call force,CFG_NXP_CAAM,n)
 else
 $(error Unsupported PLATFORM_FLAVOR "$(PLATFORM_FLAVOR)")
+endif
+
+ifneq (,$(filter $(PLATFORM_FLAVOR),mx6ullevk))
+CFG_IMX_I2C ?= n
+CFG_IMX_I2C_CLK_RATE ?= 24000000
 endif
 
 ifneq (,$(filter $(PLATFORM_FLAVOR),mx7dsabresd))
