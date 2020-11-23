@@ -146,6 +146,8 @@ include core/arch/arm/cpu/cortex-a7.mk
 else ifneq (,$(filter $(PLATFORM_FLAVOR),$(mx8mq-flavorlist)))
 $(call force,CFG_MX8MQ,y)
 $(call force,CFG_ARM64_core,y)
+CFG_IMX_I2C ?= n
+CFG_IMX_I2C_CLK_RATE ?= 24000000
 CFG_IMX_UART ?= y
 CFG_DRAM_BASE ?= 0x40000000
 CFG_TEE_CORE_NB_CORE ?= 4
