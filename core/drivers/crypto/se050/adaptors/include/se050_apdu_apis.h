@@ -54,4 +54,35 @@ sss_status_t se050_get_free_memory(pSe05xSession_t ctx, uint16_t *t,
 sss_status_t se050_scp03_send_rotate_cmd(pSe05xSession_t ctx,
 					 struct s050_scp_rotate_cmd *cmd);
 
+struct se050_ecc_keypair {
+	uint8_t *d;
+	size_t d_len;
+	uint8_t *x;
+	size_t x_len;
+	uint8_t *y;
+	size_t y_len;
+	uint32_t curve;
+};
+
+struct se050_ecc_keypub {
+	uint8_t *x;
+	size_t x_len;
+	uint8_t *y;
+	size_t y_len;
+	uint32_t curve;
+};
+
+sss_status_t se050_key_store_set_ecc_key_bin(sss_se05x_key_store_t *k_store,
+					     sss_se05x_object_t *k_object,
+					     struct se050_ecc_keypair *k_pair,
+					     struct se050_ecc_keypub *k_pub);
+
+sss_status_t se050_key_store_get_ecc_key_bin(sss_se05x_key_store_t *k_store,
+					     sss_se05x_object_t *k_oject,
+					     uint8_t *key, size_t *k_len);
+
+sss_status_t se050_ecc_gen_shared_secret(pSe05xSession_t ctx, uint32_t id,
+					 struct se050_ecc_keypub *key_pub,
+					 uint8_t *secret, unsigned long *len);
+
 #endif /* SE050_APDU_APIS_H_ */
