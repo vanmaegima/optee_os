@@ -165,6 +165,47 @@ out_free:
 	return res;
 }
 
+static TEE_Result delete_persist_value(uint32_t pt,
+				       TEE_Param params[TEE_NUM_PARAMS])
+{
+	const uint32_t exp_pt = TEE_PARAM_TYPES(TEE_PARAM_TYPE_MEMREF_INPUT,
+						TEE_PARAM_TYPE_NONE,
+						TEE_PARAM_TYPE_NONE,
+						TEE_PARAM_TYPE_NONE);
+	const uint32_t flags = TEE_DATA_FLAG_ACCESS_READ |
+			       TEE_DATA_FLAG_ACCESS_WRITE_META;
+	TEE_Result res;
+	TEE_ObjectHandle h;
+	char name_full[TEE_OBJECT_ID_MAX_LEN];
+	uint32_t name_full_sz;
+	char *name_buf;
+	size_t name_buf_sz;
+
+	if (pt != exp_pt)
+		return TEE_ERROR_BAD_PARAMETERS;
+
+	name_buf = params[0].memref.buffer;
+	name_buf_sz = params[0].memref.size;
+
+	res = get_named_object_name(name_buf, name_buf_sz,
+				    name_full, &name_full_sz);
+	if (res)
+		return res;
+
+	res = TEE_OpenPersistentObject(storageid, name_full,
+				       name_full_sz, flags, &h);
+	if (res) {
+		EMSG("Failed to open persistent object, res = 0x%x", res);
+		return res;
+	}
+
+	res = TEE_CloseAndDeletePersistentObject1(h);
+	if (res)
+		EMSG("Failed to delete persistent object, res = 0x%x", res);
+
+	return res;
+}
+
 TEE_Result TA_CreateEntryPoint(void)
 {
 	return TEE_SUCCESS;
@@ -194,6 +235,8 @@ TEE_Result TA_InvokeCommandEntryPoint(void *sess __unused, uint32_t cmd,
 		return read_persist_value(pt, params);
 	case TA_FIOVB_CMD_WRITE_PERSIST_VALUE:
 		return write_persist_value(pt, params);
+	case TA_FIOVB_CMD_DELETE_PERSIST_VALUE:
+		return delete_persist_value(pt, params);
 	default:
 		EMSG("Command ID 0x%x is not supported", cmd);
 		return TEE_ERROR_NOT_SUPPORTED;
