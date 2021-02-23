@@ -88,6 +88,8 @@ $(call force,CFG_TEE_CORE_NB_CORE,1)
 $(call force,CFG_IMX_CAAM,n)
 $(call force,CFG_NXP_CAAM,n)
 $(call force,CFG_IMX_DCP,y)
+$(call force,CFG_IMX_RNGB,y)
+$(call force,CFG_WITH_SOFTWARE_PRNG,n)
 include core/arch/arm/cpu/cortex-a7.mk
 else ifneq (,$(filter $(PLATFORM_FLAVOR),$(mx6q-flavorlist)))
 $(call force,CFG_MX6,y)
