@@ -75,11 +75,11 @@ DECLARE_KEEP_PAGER(sem_cpu_sync);
 #ifdef CFG_DT
 struct dt_descriptor {
 	void *blob;
-#ifdef CFG_EXTERNAL_DTB_OVERLAY
+#if defined(CFG_EXTERNAL_DTB_OVERLAY) || defined(CFG_OVERLAY_ADDR)
 	int frag_id;
+#endif
 #ifdef CFG_OVERLAY_ADDR
 	int is_overlay;
-#endif
 #endif
 };
 
