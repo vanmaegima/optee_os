@@ -42,11 +42,7 @@ const struct csu_setting csu_setting_imx6ul[] = {
 const struct csu_setting csu_setting_imx6ull[] = {
 	{ 13, 0xFF0033 },	/* Protect ROMCP */
 	{ 16, 0x3300FF },	/* Protect TZASC */
-#if !defined(CFG_IMX_RNGB)
 	{ 34, 0xFF0033 },	/* Protect DCP */
-#else
-	{ 34, 0x330033 },       /* Protect RNGB/DCP */
-#endif
 	{ 39, 0x3300FF },	/* Protect OCRAM */
 	{ (-1), 0 },
 };
