@@ -56,7 +56,7 @@ static inline void __raw_writeb(volatile vaddr_t addr, uint8_t val)
 }
 #endif
 
-void imx_wdog_restart(void)
+void imx_wdog_restart(bool external_reset)
 {
 	uint32_t val __attribute__((unused));
 
@@ -87,7 +87,7 @@ void imx_wdog_restart(void)
 	 */
 	while (!(io_read32(wdog_base + WDOG_CS) & WDOG_CS_RCS));
 #else
-	if (ext_reset)
+	if (external_reset)
 		val = 0x14;
 	else
 		val = 0x24;
