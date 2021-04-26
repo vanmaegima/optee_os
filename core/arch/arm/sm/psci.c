@@ -39,7 +39,7 @@
 
 __weak uint32_t psci_version(void)
 {
-	return PSCI_VERSION_0_2;
+	return PSCI_MAJOR_VER | PSCI_MINOR_VER;
 }
 
 __weak int psci_cpu_suspend(uint32_t power_state __unused,
@@ -88,6 +88,12 @@ __weak void psci_system_off(void)
 
 __weak void psci_system_reset(void)
 {
+}
+
+__weak int psci_system_reset2(uint32_t reset_type __unused,
+			      uint32_t cookie __unused)
+{
+	return PSCI_RET_NOT_SUPPORTED;
 }
 
 __weak int psci_features(uint32_t psci_fid __unused)
@@ -161,6 +167,9 @@ void tee_psci_handler(struct thread_smc_args *args, struct sm_nsec_ctx *nsec)
 		psci_system_reset();
 		while (1)
 			;
+		break;
+	case PSCI_SYSTEM_RESET2:
+		args->a0 = psci_system_reset2(a1, a2);
 		break;
 	case PSCI_PSCI_FEATURES:
 		args->a0 = psci_features(a1);

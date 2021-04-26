@@ -5,6 +5,13 @@
 #define PSCI_FN_BASE			(0x84000000U)
 #define PSCI_FN(n)			(PSCI_FN_BASE + (n))
 
+
+/*******************************************************************************
+ * PSCI version
+ ******************************************************************************/
+#define PSCI_MAJOR_VER			(U(1) << 16)
+#define PSCI_MINOR_VER			U(0x1)
+
 #define PSCI_VERSION_0_2		(0x00000002)
 #define PSCI_VERSION_1_0		(0x00010000)
 #define PSCI_VERSION			PSCI_FN(0)
@@ -26,6 +33,7 @@
 #define PSCI_PSCI_SET_SUSPEND_MODE	PSCI_FN(15)
 #define PSCI_FN_STAT_RESIDENCY		PSCI_FN(16)
 #define PSCI_FN_STAT_COUNT		PSCI_FN(17)
+#define PSCI_SYSTEM_RESET2		PSCI_FN(18)
 
 #define PSCI_NUM_CALLS			18
 
@@ -66,6 +74,7 @@ int psci_migrate_info_type(void);
 int psci_migrate_info_up_cpu(void);
 void psci_system_off(void);
 void psci_system_reset(void);
+int psci_system_reset2(uint32_t reset_type, uint32_t cookie);
 int psci_features(uint32_t psci_fid);
 int psci_node_hw_state(uint32_t cpu_id, uint32_t power_level);
 int psci_system_suspend(uintptr_t entry, uint32_t context_id,
