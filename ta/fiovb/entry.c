@@ -93,7 +93,7 @@ static TEE_Result write_persist_value(uint32_t pt,
 					 flags, NULL, value,
 					 value_sz, &h);
 	if (res)
-		EMSG("Can't create named object value, res = 0x%x", res);
+		EMSG("Can't create named object '%s' value, res = 0x%x", name_buf, res);
 
 	TEE_CloseObject(h);
 out:
@@ -143,13 +143,13 @@ static TEE_Result read_persist_value(uint32_t pt,
 	res = TEE_OpenPersistentObject(storageid, name_full,
 				       name_full_sz, flags, &h);
 	if (res) {
-		EMSG("Can't open named object value, res = 0x%x", res);
+		EMSG("Can't open named object '%s' value, res = 0x%x", name_buf, res);
 		goto out_free;
 	}
 
 	res =  TEE_ReadObjectData(h, value, value_sz, &count);
 	if (res) {
-		EMSG("Can't read named object value, res = 0x%x", res);
+		EMSG("Can't read named object '%s' value, res = 0x%x", name_buf, res);
 		goto out;
 	}
 
