@@ -66,6 +66,7 @@ void imx_wdog_restart(bool external_reset)
 	}
 
 #ifdef CFG_MX7ULP
+	(void)(external_reset);
 	dmb();
 	__raw_writel(wdog_base + WDOG_CNT, UNLOCK_SEQ0);
 	__raw_writel(wdog_base + WDOG_CNT, UNLOCK_SEQ1);
