@@ -9,7 +9,7 @@
 		      { 0x80, 0x02, 0x7b, 0x20, 0xf1, 0xc9, 0xc9, 0xb1 } }
 
 #define PERSIST_VALUE_LIST {"bootcount", "upgrade_available", "rollback", \
-			    "m4hash", "m4size", "bootupgrade_available", \
+			    "m4hash", "m4size", "m4_update", "bootupgrade_available", \
 			    "bootfirmware_version"}
 
 /*
