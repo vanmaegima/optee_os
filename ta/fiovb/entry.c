@@ -14,6 +14,13 @@
 static const uint32_t storageid = TEE_STORAGE_PRIVATE_RPMB;
 static const char *named_value_prefix = "named_value_";
 
+/* Prefix used for vendor variables */
+#ifdef CFG_FIOVB_VENDOR_PREFIX
+static const char *vendor_prefix = TO_STR(CFG_FIOVB_VENDOR_PREFIX) "_";
+#else
+static const char *vendor_prefix = "vendor_";
+#endif
+
 static TEE_Result get_named_object_name(char *name_orig,
 					uint32_t name_orig_size,
 					char *name, uint32_t *name_size)
@@ -40,6 +47,10 @@ static TEE_Result check_valid_value(char *val)
 	const char *valid_values[] = PERSIST_VALUE_LIST;
 	unsigned int i;
 
+	/* Allow vendor variables */
+	if (!strncmp(val, vendor_prefix, strlen(vendor_prefix)))
+		return TEE_SUCCESS;
+
 	for (i = 0; i < ARRAY_SIZE(valid_values); i++) {
 		if (strcmp(val, valid_values[i]) == 0)
 			return TEE_SUCCESS;
@@ -55,9 +66,12 @@ static TEE_Result write_persist_value(uint32_t pt,
 						TEE_PARAM_TYPE_MEMREF_INPUT,
 						TEE_PARAM_TYPE_NONE,
 						TEE_PARAM_TYPE_NONE);
-	const uint32_t flags = TEE_DATA_FLAG_ACCESS_READ |
-			       TEE_DATA_FLAG_ACCESS_WRITE |
-			       TEE_DATA_FLAG_OVERWRITE;
+#ifdef CFG_FIOVB_VENDOR_CREATE
+	uint32_t flags = TEE_DATA_FLAG_ACCESS_READ |
+			 TEE_DATA_FLAG_ACCESS_WRITE;
+#else
+	uint32_t flags = TEE_DATA_FLAG_ACCESS_READ;
+#endif
 	TEE_Result res;
 	TEE_ObjectHandle h;
 
@@ -74,6 +88,11 @@ static TEE_Result write_persist_value(uint32_t pt,
 		EMSG("Not found %s", name_buf);
 		return TEE_ERROR_BAD_PARAMETERS;
 	}
+
+	/* Vendor variables should not be allowed to be overwritten */
+	if (strncmp(name_buf, vendor_prefix, strlen(vendor_prefix)))
+		flags |= TEE_DATA_FLAG_ACCESS_WRITE |
+			 TEE_DATA_FLAG_OVERWRITE;
 
 	uint32_t value_sz = params[1].memref.size;
 	char *value = TEE_Malloc(value_sz, 0);
@@ -92,7 +111,9 @@ static TEE_Result write_persist_value(uint32_t pt,
 					 name_full_sz,
 					 flags, NULL, value,
 					 value_sz, &h);
-	if (res)
+	if (res == TEE_ERROR_ACCESS_CONFLICT)
+		EMSG("Can't update named object '%s' value, res = 0x%x", name_buf, res);
+	else if (res)
 		EMSG("Can't create named object '%s' value, res = 0x%x", name_buf, res);
 
 	TEE_CloseObject(h);
