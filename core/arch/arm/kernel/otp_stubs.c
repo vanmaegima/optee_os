@@ -15,7 +15,7 @@
  * lead to using a non secure key.
  */
 #if !defined(CFG_MX6) && !defined(CFG_MX7) && !defined(CFG_MX7ULP) && \
-	!defined(CFG_MX8MM) && !defined(CFG_IMX8MQ)
+	!defined(CFG_MX8MM) && !defined(CFG_MX8MQ)
 /*
  * Override these in your platform code to really fetch device-unique
  * bits from e-fuses or whatever.
