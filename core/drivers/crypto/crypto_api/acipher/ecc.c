@@ -136,7 +136,7 @@ static TEE_Result ecc_sign(uint32_t algo, struct ecc_keypair *key,
 	size_t size_bytes = 0;
 
 	/* Verify first the input parameters */
-	if (!key || !msg || !sig || !sig_len) {
+	if (!key || !msg || !sig_len) {
 		CRYPTO_TRACE("Input parameters reference error");
 		return ret;
 	}
@@ -154,6 +154,11 @@ static TEE_Result ecc_sign(uint32_t algo, struct ecc_keypair *key,
 			     *sig_len, 2 * size_bytes);
 		*sig_len = 2 * size_bytes;
 		return TEE_ERROR_SHORT_BUFFER;
+	}
+
+	if (!sig) {
+		CRYPTO_TRACE("Parameter \"sig\" reference error");
+		return TEE_ERROR_BAD_PARAMETERS;
 	}
 
 	ecc = drvcrypt_get_ops(CRYPTO_ECC);
@@ -261,7 +266,7 @@ static TEE_Result ecc_shared_secret(struct ecc_keypair *private_key,
 	size_t size_bytes = 0;
 
 	/* Verify first the input parameters */
-	if (!private_key || !public_key || !secret || !secret_len) {
+	if (!private_key || !public_key || !secret_len) {
 		CRYPTO_TRACE("Input parameters reference error");
 		return ret;
 	}
@@ -279,6 +284,11 @@ static TEE_Result ecc_shared_secret(struct ecc_keypair *private_key,
 	if (*secret_len < size_bytes) {
 		*secret_len = size_bytes;
 		return TEE_ERROR_SHORT_BUFFER;
+	}
+
+	if (!secret) {
+		CRYPTO_TRACE("Parameter \"secret\" reference error");
+		return ret;
 	}
 
 	ecc = drvcrypt_get_ops(CRYPTO_ECC);
