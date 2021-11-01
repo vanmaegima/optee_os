@@ -65,6 +65,10 @@ register_phys_mem_pgdir(MEM_AREA_IO_SEC,
 register_phys_mem_pgdir(MEM_AREA_IO_SEC, CSU_BASE, CSU_SIZE);
 #endif
 
+#ifdef DRAM0_BASE
+register_ddr(DRAM0_BASE, DRAM0_SIZE);
+#endif
+
 void main_init_gic(void)
 {
 	vaddr_t gicc_base, gicd_base;
