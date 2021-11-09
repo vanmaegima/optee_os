@@ -84,14 +84,14 @@ static TEE_Result se050_inject_public_key(sss_se05x_object_t *k_object,
 	if (st != kStatus_SSS_Success)
 		return TEE_ERROR_BAD_PARAMETERS;
 
-	st = se050_get_oid(kKeyObject_Mode_Persistent, &oid);
+	st = se050_get_oid(kKeyObject_Mode_Transient, &oid);
 	if (st != kStatus_SSS_Success)
 		return TEE_ERROR_GENERIC;
 
 	st = sss_se05x_key_object_allocate_handle(k_object, oid,
 						  kSSS_KeyPart_Public,
 						  kSSS_CipherType_RSA, 0,
-						  kKeyObject_Mode_Persistent);
+						  kKeyObject_Mode_Transient);
 	if (st != kStatus_SSS_Success)
 		return TEE_ERROR_BAD_PARAMETERS;
 
