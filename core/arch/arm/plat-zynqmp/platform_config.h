@@ -32,8 +32,7 @@
 #include <mm/generic_ram_layout.h>
 
 /* Make stacks aligned to data cache line length */
-#define CACHELINE_LEN		64
-#define STACK_ALIGNMENT		CACHELINE_LEN
+#define STACK_ALIGNMENT		64
 
 #ifdef CFG_WITH_PAGER
 #error "Pager not supported for zynqmp"
