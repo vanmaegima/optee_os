@@ -38,7 +38,6 @@ srcs-$(CFG_LS_DSPI) += ls_dspi.c
 srcs-$(CFG_IMX_RNGB) += imx_rngb.c
 srcs-$(CFG_IMX_OCOTP) += imx_ocotp.c
 srcs-$(CFG_ZYNQMP_CSU_PUF) += zynqmp_csu_puf.c
-srcs-$(CFG_ZYNQMP_CSUDMA) += zynqmp_csudma.c
 srcs-$(CFG_RNG_PTA) += rng_pta.c
 
 subdirs-y += crypto
