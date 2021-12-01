@@ -1424,7 +1424,6 @@ void __weak boot_init_primary_late(unsigned long fdt)
 	release_external_dt();
 	dt->is_overlay = 1;
 	init_external_dt(CFG_OVERLAY_ADDR);
-	discover_nsec_memory();
 	update_external_dt();
 	release_external_dt();
 #endif
