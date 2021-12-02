@@ -42,7 +42,7 @@
 static bool ext_reset;
 static vaddr_t wdog_base;
 
-void imx_wdog_restart(void)
+void imx_wdog_restart(bool external_reset __maybe_unused)
 {
 	uint32_t val = 0;
 
