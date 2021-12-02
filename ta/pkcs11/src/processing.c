@@ -980,14 +980,25 @@ enum pkcs11_rc entry_processing_key(struct pkcs11_client *client,
 		if (rc)
 			goto out;
 	} else {
-		rc = PKCS11_CKR_MECHANISM_INVALID;
-		goto out;
+		rc = init_asymm_operation(session,
+					  function,
+					  proc_params,
+					  parent);
+		if (rc)
+			goto out;
+
+		rc = do_asymm_derivation(session, proc_params, &head);
+		if (rc)
+			goto out;
+
+		goto done;
 	}
 
 	rc = set_key_data(&head, out_buf, out_size);
 	if (rc)
 		goto out;
 
+done:
 	TEE_Free(out_buf);
 	out_buf = NULL;
 

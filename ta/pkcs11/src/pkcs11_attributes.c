@@ -1373,6 +1373,8 @@ enum pkcs11_rc check_created_attrs_against_processing(uint32_t proc_id,
 	 */
 	switch (proc_id) {
 	case PKCS11_PROCESSING_IMPORT:
+	case PKCS11_CKM_ECDH1_DERIVE:
+	case PKCS11_CKM_ECDH1_COFACTOR_DERIVE:
 	case PKCS11_CKM_AES_ECB:
 	case PKCS11_CKM_AES_CBC:
 	case PKCS11_CKM_AES_ECB_ENCRYPT_DATA:
@@ -1404,6 +1406,8 @@ enum pkcs11_rc check_created_attrs_against_processing(uint32_t proc_id,
 		assert(get_key_type(head) == PKCS11_CKK_RSA);
 		break;
 	case PKCS11_PROCESSING_IMPORT:
+	case PKCS11_CKM_ECDH1_DERIVE:
+	case PKCS11_CKM_ECDH1_COFACTOR_DERIVE:
 	default:
 		break;
 	}
@@ -1747,6 +1751,8 @@ check_parent_attrs_against_processing(enum pkcs11_mechanism_id proc_id,
 	case PKCS11_CKM_ECDSA_SHA256:
 	case PKCS11_CKM_ECDSA_SHA384:
 	case PKCS11_CKM_ECDSA_SHA512:
+	case PKCS11_CKM_ECDH1_DERIVE:
+	case PKCS11_CKM_ECDH1_COFACTOR_DERIVE:
 		if (key_type != PKCS11_CKK_EC) {
 			EMSG("Invalid key %s for mechanism %s",
 			     id2str_type(key_type, key_class),
