@@ -432,11 +432,10 @@ enum caam_status caam_rng_instantiation(void)
 	RNG_TRACE("RNG Instantation");
 
 	/* Check if RNG is already instantiated */
-	if (caam_hal_rng_instantiated(rng_privdata->baseaddr)) {
-		RNG_TRACE("RNG already instantiated");
-		retstatus = CAAM_NO_ERROR;
+	retstatus = caam_hal_rng_instantiated(rng_privdata->baseaddr);
+	/* RNG is already instantiated or an error occurred */
+	if (retstatus != CAAM_NOT_INIT)
 		goto end_inst;
-	}
 
 	/*
 	 * RNG needs to be instantiated. Allocate and prepare the

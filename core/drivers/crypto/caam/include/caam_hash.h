@@ -7,15 +7,18 @@
 #ifndef __CAAM_HASH_H__
 #define __CAAM_HASH_H__
 
+#include <caam_jr.h>
+
 #ifdef CFG_NXP_CAAM_HASH_DRV
 /*
  * Initialize the Hash module
  *
- * @ctrl_addr   Controller base address
+ * @caam_jrcfg   JR configuration structure
  */
-enum caam_status caam_hash_init(vaddr_t ctrl_addr);
+enum caam_status caam_hash_init(struct caam_jrcfg *caam_jrcfg);
 #else
-static inline enum caam_status caam_hash_init(vaddr_t ctrl_addr __unused)
+static inline enum caam_status
+caam_hash_init(struct caam_jrcfg *caam_jrcfg __unused)
 {
 	return CAAM_NO_ERROR;
 }
@@ -25,11 +28,12 @@ static inline enum caam_status caam_hash_init(vaddr_t ctrl_addr __unused)
 /*
  * Initialize the HMAC module
  *
- * @ctrl_addr   Controller base address
+ * @caam_jrcfg   JR configuration structure
  */
-enum caam_status caam_hmac_init(vaddr_t ctrl_addr);
+enum caam_status caam_hmac_init(struct caam_jrcfg *caam_jrcfg);
 #else
-static inline enum caam_status caam_hmac_init(vaddr_t ctrl_addr __unused)
+static inline enum caam_status
+caam_hmac_init(struct caam_jrcfg *caam_jrcfg __unused)
 {
 	return CAAM_NO_ERROR;
 }

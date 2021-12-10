@@ -12,7 +12,7 @@
 #include <registers/rng_regs.h>
 #include <registers/version_regs.h>
 
-bool caam_hal_rng_instantiated(vaddr_t baseaddr)
+enum caam_status caam_hal_common_rng_instantiated(vaddr_t baseaddr)
 {
 	uint32_t vid = 0;
 	uint32_t nb_sh = 0;
@@ -24,12 +24,12 @@ bool caam_hal_rng_instantiated(vaddr_t baseaddr)
 		vid = io_caam_read32(baseaddr + CHAVID_LS);
 
 		if (GET_CHAVID_LS_RNGVID(vid) < 4)
-			return true;
+			return CAAM_NO_ERROR;
 	} else {
 		vid = io_caam_read32(baseaddr + RNG_VERSION);
 
 		if (GET_RNG_VERSION_VID(vid) < 4)
-			return true;
+			return CAAM_NO_ERROR;
 	}
 
 	/* Get the Number of State Handles */
@@ -39,9 +39,9 @@ bool caam_hal_rng_instantiated(vaddr_t baseaddr)
 	status = caam_hal_rng_get_sh_status(baseaddr);
 
 	if (status != GENMASK_32(nb_sh - 1, 0))
-		return false;
+		return CAAM_NOT_INIT;
 
-	return true;
+	return CAAM_NO_ERROR;
 }
 
 uint32_t caam_hal_rng_get_nb_sh(vaddr_t baseaddr)

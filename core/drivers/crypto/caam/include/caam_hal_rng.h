@@ -8,14 +8,25 @@
 #ifndef __CAAM_HAL_RNG_H__
 #define __CAAM_HAL_RNG_H__
 
+#include <caam_status.h>
 #include <types_ext.h>
 
 /*
  * Returns if all RNG State Handler already instantiated or not
+ * Common function
  *
  * @baseaddr  RNG Base Address
  */
-bool caam_hal_rng_instantiated(vaddr_t baseaddr);
+enum caam_status caam_hal_common_rng_instantiated(vaddr_t baseaddr);
+
+/*
+ * Returns if all RNG State Handler already instantiated or not
+ * Soc specific function
+ *
+ * @baseaddr  RNG Base Address
+ */
+enum caam_status caam_hal_rng_instantiated(vaddr_t baseaddr);
+
 
 /*
  * Returns the number of RNG State Handle
