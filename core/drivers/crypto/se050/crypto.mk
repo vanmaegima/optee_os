@@ -15,6 +15,8 @@ CFG_CORE_SE05X_SCP03_EARLY ?= y
 CFG_CORE_SE05X_INIT_NVM ?= n
 # Selects the default SCP03 keys based on the configured OEFID
 CFG_CORE_SE05X_OEFID ?= 0
+# Select the SE05X applet version for aligning the built-in features
+CFG_CORE_SE05X_VER ?= 03_XX
 
 # I2C bus baudrate (depends on SoC)
 CFG_CORE_SE05X_BAUDRATE ?= 3400000

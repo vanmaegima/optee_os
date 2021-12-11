@@ -4,3 +4,4 @@ cflags-y += -DVERBOSE_APDU_LOGS=0
 cflags-y += -DT1oI2C_UM11225
 cflags-y += -DT1oI2C
 cflags-y += -DSSS_USE_FTR_FILE
+cflags-y += -DSSS_HAVE_SE05X_VER_$(CFG_CORE_SE05X_VER)=1
