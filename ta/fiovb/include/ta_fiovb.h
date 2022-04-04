@@ -11,7 +11,7 @@
 #define PERSIST_VALUE_LIST {"bootcount", "upgrade_available", "rollback", \
 			    "m4hash", "m4size", "m4_update", "bootupgrade_available", \
 			    "bootupgrade_primary_updated", "bootfirmware_version", \
-			    "debug"}
+			    "is_secondary_boot", "debug"}
 
 /*
  * Reads a persistent value corresponding to the given name.
